@@ -11,10 +11,10 @@ import sys
 from rich.logging import RichHandler
 # Import subcommand functions
 from . import parse as parse_module
-# from . import analyze as analyze_module
-# from . import summarize as summarize_module
-# from . import visualize as visualize_module
-# from . import export as export_module
+from . import analyze as analyze_module
+from . import summarize as summarize_module
+from . import visualize as visualize_module
+from . import export as export_module
 from . import __version__
 
 console = rich.console.Console()
@@ -198,7 +198,7 @@ def analyze(
     # Placeholder for actual analysis
     try:
         log.info("Analysis started.")
-        # analyze_module.run_analysis(input_path, output_dir, config)
+        analyze_module.run_analysis(input_path, output_dir, config)
     except Exception as e:
         log.error(f"Analysis failed for {input_path}: {e}", exc_info=True)
         raise typer.Exit(code=1)
@@ -239,7 +239,7 @@ def summarize(
 
     try:
         log.info("Summarization started.")
-        # summarize_module.run_summarization(input_path, output_dir, template)
+        summarize_module.run_summarization(input_path, output_dir, template)
     except Exception as e:
         log.error(f"Summarization failed for {input_path}: {e}", exc_info=True)
         raise typer.Exit(code=1)
@@ -281,7 +281,7 @@ def visualize(
 
     try:
         log.info("Visualization data generation started.")
-        # visualize_module.run_visualization(input_path, output_dir, embed)
+        visualize_module.run_visualization(input_path, output_dir, embed)
     except Exception as e:
         log.error(f"Visualization data generation failed for {input_path}: {e}", exc_info=True)
         raise typer.Exit(code=1)
@@ -319,7 +319,7 @@ def export(
 
     try:
         log.info("Export started.")
-        # export_module.run_export(input_path, output_dir, format)
+        export_module.run_export(input_path, output_dir, format)
     except Exception as e:
         log.error(f"Export failed for {input_path} (format: {format}): {e}", exc_info=True)
         raise typer.Exit(code=1)
