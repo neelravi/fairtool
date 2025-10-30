@@ -123,7 +123,7 @@ def _nomad_atoms_to_pymatgen(atoms_block: dict) -> Optional[Structure]:
         return None
 
 
-def run_parser(input_file: Path, output_dir: Path, force: bool):
+def run_parser(input_file: Path, output_dir: Path, force: bool) -> bool:
     """
     Parses a single calculation file using electronic-parsers.
 
@@ -131,43 +131,43 @@ def run_parser(input_file: Path, output_dir: Path, force: bool):
         input_file: Path to the calculation output file.
         output_dir: Directory to save the parsed JSON and Markdown.
         force: Whether to overwrite existing output files.
+        
+    Returns:
+        bool: True if parsing was skipped, False otherwise.
     """
     # Define output file paths
     base_name = input_file.stem
     json_output_path = output_dir / f"fair_parsed_{base_name}.json"
+    
+    # Unused variable removed
+    # md_output_path = output_dir / f"fair_summarized_{base_name}.md"
 
-    log.info(f"Preparing to parse {json_output_path} ...")
+    log.info(f"Preparing to parse {input_file.name} -> {json_output_path.name}")
 
     # If not forcing, check existing parsed JSON metadata to decide whether to skip
-    if not force:
-        if json_output_path.exists():
+    if not force and json_output_path.exists():
+        try:
+            with open(json_output_path, 'r', encoding='utf-8') as jf:
+                existing = json.load(jf)
+            fair_time = None
+            if isinstance(existing, dict):
+                md = existing.get('metadata')
+                if isinstance(md, dict):
+                    fair_time = md.get('fair_parse_time')
             try:
-                with open(json_output_path, 'r', encoding='utf-8') as jf:
-                    existing = json.load(jf)
-                fair_time = None
-                if isinstance(existing, dict):
-                    md = existing.get('metadata')
-                    if isinstance(md, dict):
-                        fair_time = md.get('fair_parse_time')
-                try:
-                    file_mtime = input_file.stat().st_mtime
-                except Exception:
-                    file_mtime = None
-
-                if fair_time is not None and file_mtime is not None:
-                    try:
-                        if float(fair_time) >= float(file_mtime):
-                            log.info(f"Skipping parse for {input_file.name} — unchanged since last parse (fair_parse_time={fair_time}).")
-                            return
-                    except Exception:
-                        # If conversion/comparison fails, fall back to parsing
-                        log.debug(f"Could not compare fair_parse_time ({fair_time}) with file mtime; will re-parse.")
+                file_mtime = input_file.stat().st_mtime
             except Exception:
-                # If reading the existing JSON fails, fall back to parsing
-                log.debug(f"Could not read existing parsed JSON {json_output_path}; will re-parse.")
-        elif md_output_path.exists():
-            # If only a markdown output exists but not JSON, proceed with parsing
-            log.debug(f"Found markdown output {md_output_path} but no JSON; will run parser to regenerate JSON.")
+                file_mtime = None
+
+            if fair_time is not None and file_mtime is not None:
+                try:
+                    if float(fair_time) >= float(file_mtime):
+                        log.info(f"Skipping parse for {input_file.name} — unchanged since last parse.")
+                        return True # Return True to indicate skipped
+                except Exception:
+                    log.debug(f"Could not compare times; will re-parse.")
+        except Exception:
+            log.debug(f"Could not read existing parsed JSON {json_output_path}; will re-parse.")
 
     log.info(f"Attempting to parse {input_file.name} ...")
 
@@ -180,8 +180,6 @@ def run_parser(input_file: Path, output_dir: Path, force: bool):
     ]
 
     try:
-        # We need to import the subprocess module
-
         # Run the NOMAD parser command
         process = subprocess.run(
             command,
@@ -191,15 +189,12 @@ def run_parser(input_file: Path, output_dir: Path, force: bool):
             encoding='utf-8'
         )
 
-        # The JSON output is in stdout
         raw_json_output = process.stdout
         if not raw_json_output:
             log.warning(f"Parser returned no data for {input_file.name}.")
-            return
+            return False # Not skipped, but failed
 
         # Parse the full JSON output into a Python dictionary
-        # The output might contain multiple JSON objects. We need to parse all of them
-        # and merge them.
         decoder = json.JSONDecoder()
         pos = 0
         full_data = {}
@@ -209,79 +204,37 @@ def run_parser(input_file: Path, output_dir: Path, force: bool):
             full_data.update(obj)
             pos = len(raw_json_output[:pos].strip())
 
-
-        # log.info(f"Parsed data for {input_file.name}: {full_data}")
-
-        # --- Filter for necessary fields ---
-        # Explicitly remove unwanted fields
+        # --- Filter for necessary fields (using safe .pop()) ---
         if "run" in full_data and isinstance(full_data["run"], list):
             for run_item in full_data["run"]:
-                # Handle method array for k_mesh points
                 if "method" in run_item and isinstance(run_item["method"], list):
                     for method_item in run_item["method"]:
-                        if "k_mesh" in method_item:
-                            if "points" in method_item["k_mesh"]:
-                                if "im" in method_item["k_mesh"]["points"]:
-                                    del method_item["k_mesh"]["points"]["im"]
-                                    #log.info(f"Removed 'im' from k_mesh points in {input_file.name}")
+                        if "k_mesh" in method_item and isinstance(method_item["k_mesh"], dict):
+                            if "points" in method_item["k_mesh"] and isinstance(method_item["k_mesh"]["points"], dict):
+                                method_item["k_mesh"]["points"].pop("im", None) # Safe pop
                 
-                # Handle calculation array for dos_electronic and eigenvalues
                 if "calculation" in run_item and isinstance(run_item["calculation"], list):
                     for calc_item in run_item["calculation"]:
-                        if "dos_electronic" in calc_item:
-                            del calc_item["dos_electronic"]
-                            #log.info(f"Removed 'dos_electronic' from calculation in {input_file.name}")
-                        if "eigenvalues" in calc_item:
-                            del calc_item["eigenvalues"]
-                            #log.info(f"Removed 'eigenvalues' from calculation in {input_file.name}")
-        else:
-            log.info(f"No 'run' array found in full_data for {input_file.name}; nothing to remove.")
+                        calc_item.pop("dos_electronic", None) # Safe pop
+                        calc_item.pop("eigenvalues", None) # Safe pop
 
-        # These top-level keys come from the *first* JSON object (metadata)
-        # The `if` checks make these deletions safe.
-        if "entry_name" in full_data:
-            del full_data["entry_name"]
-            #log.info(f"Removed 'entry_name' from full_data for {input_file.name}.")
-        if "entry_type" in full_data:
-            del full_data["entry_type"]
-            #log.info(f"Removed 'entry_type' from full_data for {input_file.name}.")
-        if "mainfile" in full_data:
-            del full_data["mainfile"]
-            #log.info(f"Removed 'mainfile' from full_data for {input_file.name}.")
-        if "domain" in full_data:
-            del full_data["domain"]
-            #log.info(f"Removed 'domain' from full_data for {input_file.name}.")
-        if "n_quantities" in full_data:
-            del full_data["n_quantities"]
-            #log.info(f"Removed 'n_quantities' from full_data for {input_file.name}.")
-        if "quantities" in full_data:
-            del full_data["quantities"]
-            #log.info(f"Removed 'quantities' from full_data for {input_file.name}.")
-        if "optimade" in full_data:
-            del full_data["optimade"]
-            #log.info(f"Removed 'optimade' from full_data for {input_file.name}.")
-        if "sections" in full_data:
-            del full_data["sections"]
-            #log.info(f"Removed 'sections' from full_data for {input_file.name}.")
-        if "section_defs" in full_data:
-            del full_data["section_defs"]
-            #log.info(f"Removed 'section_defs' from full_data for {input_file.name}.")
-        if "workflow2" in full_data:
-            del full_data["workflow2"]
-            #log.info(f"Removed 'workflow2' from full_data for {input_file.name}.")
-
+        # Safe-pop top-level keys
+        full_data.pop("entry_name", None)
+        full_data.pop("entry_type", None)
+        full_data.pop("mainfile", None)
+        full_data.pop("domain", None)
+        full_data.pop("n_quantities", None)
+        full_data.pop("quantities", None)
+        full_data.pop("optimade", None)
+        full_data.pop("sections", None)
+        full_data.pop("section_defs", None)
+        full_data.pop("workflow2", None)
 
         if "metadata" in full_data and isinstance(full_data["metadata"], dict):
-            # --- FIX ---
-            # Use .pop(key, None) to safely remove keys.
-            # This prevents a KeyError if the key doesn't exist in the
-            # metadata dictionary (which it often won't).
             full_data["metadata"].pop("n_quantities", None)
             full_data["metadata"].pop("quantities", None)
             full_data["metadata"].pop("sections", None)
             full_data["metadata"].pop("section_defs", None)
-            # --- END FIX ---
-
 
         log.info(f"Saving filtered parsed data to {json_output_path}")
         try:
@@ -295,8 +248,6 @@ def run_parser(input_file: Path, output_dir: Path, force: bool):
             log.info(f"Successfully saved JSON: {json_output_path.name}")
 
             # Also create structure JSON
-            # _create_structure_json(full_data, output_dir, base_name)
-
             _create_structure_json(full_data, output_dir, base_name)
 
         except Exception as json_err:
@@ -309,8 +260,7 @@ def run_parser(input_file: Path, output_dir: Path, force: bool):
         log.error("`nomad` command not found. Is NOMAD installed and in your system's PATH?")
         raise
     except subprocess.CalledProcessError as e:
-            # log the stderr from the failed command for better debugging
-            log.error(f"NOMAD parsing command failed with exit code {e.returncode}: {e.stderr}", exc_info=True)
+            log.error(f"NOMAD parsing command failed for {input_file.name} with exit code {e.returncode}: {e.stderr}", exc_info=False)
             raise
     except json.JSONDecodeError as e:
         log.error(f"Failed to decode JSON output from NOMAD parser for {input_file.name}: {e}")
@@ -319,3 +269,5 @@ def run_parser(input_file: Path, output_dir: Path, force: bool):
     except Exception as e:
         log.error(f"An unexpected error occurred during parsing of {input_file.name}: {e}", exc_info=True)
         raise
+
+    return False # Return False to indicate parsing was attempted
