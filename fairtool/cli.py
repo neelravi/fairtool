@@ -268,7 +268,7 @@ def parse(
     log.info("--- Parsing Finished ---")
     log.info(f"[green]Success: {count_success}[/green]")
     log.warning(f"[yellow]Skipped: {count_skip}[/yellow]")
-    log.error(f"[red]Failed:  {count_fail}[/red]")
+    log.info(f"[red]Failed:  {count_fail}[/red]")
 
 
 @app.command()
