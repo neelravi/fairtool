@@ -1,12 +1,11 @@
-# fairtool_project/tests/test_cli.py
-
 import pytest
 from typer.testing import CliRunner
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+import typer
 
 # Import the main Typer application from your cli.py
-from fairtool.cli import app, _find_calc_files #
+from fairtool.cli import app, _find_calc_files
 
 # Initialize the CliRunner
 runner = CliRunner()
@@ -14,237 +13,238 @@ runner = CliRunner()
 # --- Fixtures for common test setup ---
 
 @pytest.fixture
-def mock_parse_run_parser():
+def mock_all_runners():
     """
-    Mocks parse_module.run_parser to prevent actual parsing during CLI tests.
+    Mocks all the 'run_...' functions in the logic modules to test
+    the CLI layer in isolation.
     """
-    with patch('fairtool.parse.run_parser') as mock:
-        yield mock
+    with patch('fairtool.cli.parse_module.run_parser') as mock_parse, \
+         patch('fairtool.cli.analyze_module.run_analysis') as mock_analyze, \
+         patch('fairtool.cli.summarize_module.run_summarization') as mock_summarize, \
+         patch('fairtool.cli.export_module.run_export') as mock_export, \
+         patch('fairtool.cli.visualize_module.run_visualization') as mock_visualize:
+        
+        # Make run_parser return False (not skipped)
+        mock_parse.return_value = False 
+        
+        yield {
+            "parse": mock_parse,
+            "analyze": mock_analyze,
+            "summarize": mock_summarize,
+            "export": mock_export,
+            "visualize": mock_visualize
+        }
 
-# --- Tests for _find_calc_files helper function ---
-
-# def test_find_calc_files_single_file(tmp_path):
-#     """Test finding a single file."""
-#     test_file = tmp_path / "OUTCAR"
-#     test_file.touch()
-#     files = _find_calc_files(test_file) #
-#     assert files == [test_file]
-
-# def test_find_calc_files_directory_with_files(tmp_path):
-#     """Test finding files within a directory."""
-#     sub_dir = tmp_path / "calc_data"
-#     sub_dir.mkdir()
-#     file1 = sub_dir / "OUTCAR"
-#     file1.touch()
-#     file2 = sub_dir / "subdir" / "my_calc.out"
-#     file2.parent.mkdir()
-#     file2.touch()
-#     irrelevant_file = sub_dir / "temp.txt"
-#     irrelevant_file.touch()
-
-#     files = _find_calc_files(sub_dir) #
-#     # Ensure all found files are Path objects and the list contains expected files
-#     assert all(isinstance(f, Path) for f in files)
-#     assert file1 in files
-#     assert file2 in files
-#     assert irrelevant_file not in files # Only OUTCAR and .out files
-
-# def test_find_calc_files_non_existent_path(caplog):
-#     """Test handling of a non-existent input path."""
-#     non_existent_path = Path("/non/existent/path/to/file.xml")
-#     with pytest.raises(SystemExit) as excinfo:
-#         _find_calc_files(non_existent_path) #
-#     assert excinfo.value.code == 1
-#     assert "Error: Input path does not exist" in caplog.text
-
-# def test_find_calc_files_empty_directory(tmp_path, caplog):
-#     """Test handling of an empty directory."""
-#     empty_dir = tmp_path / "empty_dir"
-#     empty_dir.mkdir()
-#     files = _find_calc_files(empty_dir) #
-#     assert files == []
-#     assert "No potential calculation files found" in caplog.text
+@pytest.fixture
+def setup_test_files(tmp_path):
+    """
+    Create a standard file structure for testing file finding.
+    
+    Structure:
+    tmp_path/
+    ├── vasprun.xml
+    ├── other.txt
+    ├── fair_parsed_data.json
+    ├── config.yml
+    └── subdir/
+        └── vasprun.xml
+    """
+    (tmp_path / "vasprun.xml").write_text("dummy vasp 1")
+    (tmp_path / "subdir").mkdir(parents=True)
+    (tmp_path / "subdir" / "vasprun.xml").write_text("dummy vasp 2")
+    (tmp_path / "other.txt").write_text("not a calc file")
+    (tmp_path / "fair_parsed_data.json").write_text("{}")
+    (tmp_path / "config.yml").write_text("config: true")
+    return tmp_path
 
 
-# # --- Tests for CLI Commands ---
-
-# def test_parse_command_success(mock_parse_run_parser, tmp_path):
-#     """
-#     Test the 'parse' command with a single file and successful parsing.
-#     """
-#     input_file = tmp_path / "test_vasp.xml"
-#     input_file.write_text("<some_xml_content/>") # Create a dummy input file
-
-#     output_dir = tmp_path / "parsed_output"
-
-#     result = runner.invoke(app, ["parse", str(input_file), "-o", str(output_dir)]) #
-
-#     assert result.exit_code == 0
-#     assert "Starting parsing process" in result.stdout
-#     assert f"Output will be saved to: {output_dir}" in result.stdout
-#     assert f"Parsing file: {input_file}" in result.stdout
-#     assert "Parsing finished." in result.stdout
-#     mock_parse_run_parser.assert_called_once_with(input_file, output_dir, True)
-
-#     assert output_dir.exists() # Ensure output directory was created
-
-# def test_parse_command_directory_success(mock_parse_run_parser, tmp_path):
-#     """
-#     Test the 'parse' command with a directory input.
-#     """
-#     input_dir = tmp_path / "calc_data"
-#     input_dir.mkdir()
-#     file1 = input_dir / "OUTCAR"
-#     file1.touch()
-#     file2 = input_dir / "job.out"
-#     file2.touch()
-
-#     output_dir = tmp_path / "parsed_output_dir"
-
-#     result = runner.invoke(app, ["parse", str(input_dir), "-o", str(output_dir)]) #
-
-#     assert result.exit_code == 0
-#     assert f"Output will be saved to: {output_dir}" in result.stdout
-#     assert f"Parsing file: {file1}" in result.stdout
-#     assert f"Parsing file: {file2}" in result.stdout
-#     assert "Parsing finished." in result.stdout
-#     assert mock_parse_run_parser.call_count == 2 # Called for each file
-#     mock_parse_run_parser.assert_any_call(file1, output_dir, True)
-#     mock_parse_run_parser.assert_any_call(file2, output_dir, True)
-
-
-# def test_parse_command_force_flag(mock_parse_run_parser, tmp_path):
-#     """
-#     Test the 'parse' command with --force flag.
-#     """
-#     input_file = tmp_path / "another_vasp.xml"
-#     input_file.write_text("<content/>")
-#     output_dir = tmp_path / "forced_output"
-#     output_dir.mkdir()
-
-#     # Default force is True, so this tests explicit --force is handled.
-#     result = runner.invoke(app, ["parse", str(input_file), "-o", str(output_dir), "--force"]) #
-
-#     assert result.exit_code == 0
-#     mock_parse_run_parser.assert_called_once_with(input_file, output_dir, True)
-
-# def test_parse_command_no_force_flag_and_existing_files(mock_parse_run_parser, tmp_path):
-#     """
-#     Test 'parse' command without --force and existing output files.
-#     This should lead to the parser being skipped for existing files within parse_module.
-#     The cli should still call parse_module.run_parser, and parse_module handles the skipping.
-#     """
-#     input_file = tmp_path / "existing_file.xml"
-#     input_file.write_text("<content/>")
-#     output_dir = tmp_path / "existing_output"
-#     output_dir.mkdir()
-
-#     # The parse_module.run_parser itself handles the "no force" logic,
-#     # so we still expect it to be called by the CLI.
-#     # We can simulate its internal behavior for this test by checking if mock_parse_run_parser
-#     # was called with 'force=False'.
-#     result = runner.invoke(app, ["parse", str(input_file), "-o", str(output_dir), "--force", "False"]) #
-
-#     assert result.exit_code == 0
-#     # The CLI calls `run_parser` with the provided `force` value
-#     mock_parse_run_parser.assert_called_once_with(input_file, output_dir, False)
-
-
-# def test_parse_command_parse_module_failure(mock_parse_run_parser, tmp_path):
-#     """
-#     Test that the 'parse' command handles exceptions from parse_module.run_parser.
-#     """
-#     input_file = tmp_path / "bad_file.xml"
-#     input_file.write_text("<invalid_content/>")
-#     output_dir = tmp_path / "error_output"
-#     output_dir.mkdir()
-
-#     # Simulate an exception from parse_module.run_parser
-#     mock_parse_run_parser.side_effect = Exception("Simulated parsing error")
-
-#     result = runner.invoke(app, ["parse", str(input_file), "-o", str(output_dir)]) #
-
-#     # The CLI currently logs the error and continues, it does not raise typer.Exit
-#     assert result.exit_code == 0 # Or 1 if you choose to exit on first error
-#     assert "Failed to parse" in result.stdout
-#     assert "Simulated parsing error" in result.stdout
-#     mock_parse_run_parser.assert_called_once()
-
+# --- Existing Tests ---
 
 def test_version_command():
     """
     Test the --version/-v flag.
     """
-    result = runner.invoke(app, ["--version"]) #
+    result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
     assert "FAIR Tool Version:" in result.stdout
 
-    result = runner.invoke(app, ["-v"]) #
+    result = runner.invoke(app, ["-v"])
     assert result.exit_code == 0
     assert "FAIR Tool Version:" in result.stdout
 
 
 def test_author(capsys):
     """
-    Test if the author information is displayed correctly.
+    Test if the author information is displayed correctly in 'about'.
     """
-    result = runner.invoke(app, ["about"]) #
+    result = runner.invoke(app, ["about"])
     assert result.exit_code == 0
-    print ("whole stdout", result.stdout)  # For debugging purposes
     assert "Dr. Ravindra Shinde" in result.stdout
-
-    result = runner.invoke(app, ["about"]) #
-    assert result.exit_code == 0
     assert "r.l.shinde@utwente.nl" in result.stdout
 
 
-
-def test_about_callback(capsys):
+def test_no_command_shows_help():
     """
-    Test that the about message is displayed on initial call without subcommand.
-    This is implicitly tested by `no_args_is_help=True` and `callback=about()`.
+    Test that invoking with no command shows the help message
+    (due to no_args_is_help=True).
     """
-    result = runner.invoke(app) # Invoking without arguments should show help and about
-    print (result.stdout)
+    result = runner.invoke(app)
     assert result.exit_code == 0
-    assert "Options" in result.stdout
+    assert "Usage: fair [OPTIONS] COMMAND [ARGS]..." in result.stdout
     assert "Commands" in result.stdout
-#    assert "Usage: fair [OPTIONS] COMMAND [ARGS]" in result.stdout
 
-# --- Tests for other commands (placeholders, as they are not implemented yet) ---
 
-# def test_analyze_command_placeholder():
-#     """
-#     Test the 'analyze' command (placeholder for future implementation).
-#     """
-#     result = runner.invoke(app, ["analyze", "dummy_input.json"]) #
-#     assert result.exit_code == 0
-#     assert "Starting analysis process" in result.stdout
-#     assert "Analysis finished." in result.stdout
+# --- [NEW] Unit Tests for _find_calc_files Helper ---
 
-# def test_summarize_command_placeholder():
-#     """
-#     Test the 'summarize' command (placeholder for future implementation).
-#     """
-#     result = runner.invoke(app, ["summarize", "dummy_input.json"]) #
-#     assert result.exit_code == 0
-#     assert "Starting summarization process" in result.stdout
-#     assert "Summarization finished." in result.stdout
+def test_find_calc_files_non_recursive(setup_test_files):
+    """Test finding files only in the root directory."""
+    files = _find_calc_files(setup_test_files, recursive=False, assume_yes=True)
+    assert len(files) == 1
+    assert files[0].name == "vasprun.xml"
+    assert files[0].parent.name == setup_test_files.name
 
-# def test_visualize_command_placeholder():
-#     """
-#     Test the 'visualize' command (placeholder for future implementation).
-#     """
-#     result = runner.invoke(app, ["visualize", "dummy_input.json"]) #
-#     assert result.exit_code == 0
-#     assert "Starting visualization data generation" in result.stdout
-#     assert "Visualization data generation finished." in result.stdout
+def test_find_calc_files_recursive(setup_test_files):
+    """Test finding files recursively."""
+    files = _find_calc_files(setup_test_files, recursive=True, assume_yes=True)
+    assert len(files) == 2
+    # Check that we found both vasprun.xml files
+    assert {f.parent.name for f in files} == {setup_test_files.name, "subdir"}
 
-# def test_export_command_placeholder():
-#     """
-#     Test the 'export' command (placeholder for future implementation).
-#     """
-#     result = runner.invoke(app, ["export", "dummy_input.json"]) #
-#     assert result.exit_code == 0
-#     assert "Starting export process" in result.stdout
-#     assert "Export finished." in result.stdout
+def test_find_calc_files_on_file_input(setup_test_files):
+    """Test giving a direct file path instead of a directory."""
+    file_path = setup_test_files / "vasprun.xml"
+    files = _find_calc_files(file_path, recursive=False, assume_yes=True)
+    assert len(files) == 1
+    assert files[0] == file_path
+
+def test_find_calc_files_no_files_found(setup_test_files):
+    """Test searching a directory that contains no matching files."""
+    (setup_test_files / "empty_dir").mkdir()
+    files = _find_calc_files(setup_test_files / "empty_dir", recursive=True, assume_yes=True)
+    assert len(files) == 0
+
+def test_find_calc_files_non_existent_path():
+    """Test that a non-existent path raises a typer.Exit."""
+    with pytest.raises(typer.Exit):
+        _find_calc_files(Path("non_existent_path_12345"), recursive=True, assume_yes=True)
+
+
+# --- [NEW] CLI Integration Tests ---
+
+def test_cli_parse_command_options(mock_all_runners, setup_test_files):
+    """
+    Test the `parse` command's options: -r, -f, -y, -o.
+    This test checks that the CLI layer correctly interprets these
+    options and passes them to the backend parser.
+    """
+    test_dir = setup_test_files
+    out_dir = setup_test_files / "output"
+    
+    result = runner.invoke(app, [
+        "parse",
+        str(test_dir),
+        "--recursive",
+        "--force",
+        "--yes",
+        "--output", str(out_dir)
+    ])
+    
+    assert result.exit_code == 0
+    
+    # Check that parse_module.run_parser was called correctly
+    mock_parse = mock_all_runners["parse"]
+    
+    # It should be called 2 times (once for each file found)
+    assert mock_parse.call_count == 2
+    
+    # Check the call args.
+    # call_args_list[0][0] is the (args,) tuple of the first call.
+    # The args are (file_path, output_dir_path, force_flag)
+    expected_calls = [
+        (test_dir / "vasprun.xml", out_dir, True),
+        (test_dir / "subdir" / "vasprun.xml", out_dir, True)
+    ]
+    
+    # Convert mock calls to a simpler, comparable format
+    actual_calls = [
+        (call[0][0], call[0][1], call[0][2]) for call in mock_parse.call_args_list
+    ]
+    
+    # Use sets to be order-agnostic
+    assert set(actual_calls) == set(expected_calls)
+
+
+def test_cli_analyze_command(mock_all_runners, setup_test_files):
+    """
+    Test the `analyze` command and its options.
+    """
+    json_file = setup_test_files / "fair_parsed_data.json"
+    out_dir = setup_test_files / "analysis_out"
+    config_file = setup_test_files / "config.yml"
+
+    result = runner.invoke(app, [
+        "analyze",
+        str(json_file),
+        "--output", str(out_dir),
+        "--config", str(config_file)
+    ])
+    
+    assert result.exit_code == 0
+    mock_analyze = mock_all_runners["analyze"]
+    
+    # Check that analyze_module.run_analysis was called with correct args
+    mock_analyze.assert_called_once_with(
+        json_file, # Typer resolves this path
+        out_dir,
+        config_file
+    )
+
+def test_cli_all_command(mock_all_runners, setup_test_files):
+    """
+    Test the `all` command to ensure it orchestrates the
+    full workflow and passes options correctly.
+    """
+    test_dir = setup_test_files
+    out_dir = setup_test_files / "all_output"
+    
+    # We mock the file-finding helpers to isolate the logic
+    # of the 'all' command itself.
+    with patch('fairtool.cli._find_calc_files') as mock_find_calc, \
+         patch('fairtool.cli._find_json_files') as mock_find_json:
+        
+        # Setup mock return values
+        dummy_calc_file = setup_test_files / "vasprun.xml"
+        dummy_json_file = out_dir / "fair_parsed_vasprun.json"
+        mock_find_calc.return_value = [dummy_calc_file]
+        mock_find_json.return_value = [dummy_json_file]
+        
+        result = runner.invoke(app, [
+            "all",
+            str(test_dir),
+            "-r", "-f", "-y",
+            "-o", str(out_dir),
+            "--format", "csv",
+            "--embed"
+        ])
+        
+        assert result.exit_code == 0
+        
+        # Check that the 'all' command called all the backend
+        # modules in the correct order with the correct arguments.
+        
+        # 1. Parse
+        mock_find_calc.assert_called_once_with(test_dir, recursive=True, assume_yes=True)
+        mock_all_runners["parse"].assert_called_once_with(dummy_calc_file, out_dir, True)
+        
+        # 2. Analyze
+        mock_all_runners["analyze"].assert_called_once_with(out_dir, out_dir, None)
+        
+        # 3. Summarize
+        mock_find_json.assert_called_once_with(out_dir, recursive=True)
+        mock_all_runners["summarize"].assert_called_once_with(dummy_json_file, out_dir, None)
+
+        # 4. Export
+        mock_all_runners["export"].assert_called_once_with(out_dir, out_dir, "csv")
+
+        # 5. Visualize
+        mock_all_runners["visualize"].assert_called_once_with(out_dir, out_dir, True)
