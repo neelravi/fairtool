@@ -202,7 +202,6 @@ def run_parser(input_file: Path, output_dir: Path, force: bool) -> bool:
         while pos < len(raw_json_output):
             obj, pos = decoder.raw_decode(raw_json_output, pos)
             full_data.update(obj)
-            pos = len(raw_json_output[:pos].strip())
 
         # --- Filter for necessary fields (using safe .pop()) ---
         if "run" in full_data and isinstance(full_data["run"], list):
