@@ -64,11 +64,11 @@ def test_version_command():
     """
     Test the --version/-v flag.
     """
-    result = runner.invoke(app, ["--version"])
+    result = runner.invoke(app, ["--version"], env={"TERM": "dumb"})
     assert result.exit_code == 0
     assert "FAIR Tool Version:" in result.stdout
 
-    result = runner.invoke(app, ["-v"])
+    result = runner.invoke(app, ["-v"], env={"TERM": "dumb"})
     assert result.exit_code == 0
     assert "FAIR Tool Version:" in result.stdout
 
@@ -77,9 +77,13 @@ def test_author(capsys):
     """
     Test if the author information is displayed correctly in 'about'.
     """
-    result = runner.invoke(app, ["about"])
+    result = runner.invoke(app, ["about"], env={"TERM": "dumb"})
     assert result.exit_code == 0
+    print ("whole stdout", result.stdout)  # For debugging purposes
     assert "Dr. Ravindra Shinde" in result.stdout
+
+    result = runner.invoke(app, ["about"], env={"TERM": "dumb"})
+    assert result.exit_code == 0
     assert "r.l.shinde@utwente.nl" in result.stdout
 
 
@@ -88,7 +92,7 @@ def test_no_command_shows_help():
     Test that invoking with no command shows the help message
     (due to no_args_is_help=True).
     """
-    result = runner.invoke(app)
+    result = runner.invoke(app, env={"TERM": "dumb"})
     assert result.exit_code == 0
     assert "Usage: fair [OPTIONS] COMMAND [ARGS]..." in result.stdout
     assert "Commands" in result.stdout
