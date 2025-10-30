@@ -192,7 +192,7 @@ def run_parser(input_file: Path, output_dir: Path, force: bool) -> bool:
         raw_json_output = process.stdout
         if not raw_json_output:
             log.warning(f"Parser returned no data for {input_file.name}.")
-            return False # Not skipped, but failed
+            return False
 
         # Parse the full JSON output into a Python dictionary
         decoder = json.JSONDecoder()
