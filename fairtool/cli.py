@@ -1,13 +1,22 @@
 """Main CLI entry point for the FAIR tool."""
-import os
 import typer
 from typing_extensions import Annotated
 from pathlib import Path
 from typing import Optional
 import logging
 import rich
-import sys
+import subprocess
 from rich.logging import RichHandler
+import tempfile
+
+import shutil  # Import shutil for copying
+import yaml  # <-- Re-import yaml
+import os  # <-- Import OS for environment variables
+from importlib.resources import files  # <-- Use this for package data
+import importlib # <-- Import for checking dependencies
+import sys # <-- Import sys to get executable path
+
+
 # Import subcommand functions
 from . import parse as parse_module
 from . import analyze as analyze_module
@@ -37,6 +46,20 @@ app = typer.Typer(
     suggest_commands=True,
     rich_markup_mode="rich"
 )
+
+# --- YAML LOADER FIX ---
+# We need these again so yaml.UnsafeLoader can find the modules
+try:
+    import material.extensions.emoji
+    import pymdownx.superfences
+    import pymdownx.slugs
+    import pymdownx.tabbed
+except ImportError as e:
+    log.warning(f"Could not pre-import mkdocs plugin modules: {e}")
+    log.warning("This might be okay if 'mkdocs-material' is not installed,")
+    log.warning("but loading the config might fail if it uses these modules.")
+# --- END YAML LOADER FIX ---
+
 
 # --- Typer Command Definitions ---
 @app.command(rich_help_panel="Information and Help", epilog="Made with :heart: in [blue]The Netherlands[/blue]")
@@ -434,47 +457,238 @@ def export(
     log.info("Export finished.")
 
 
+# @app.command(rich_help_panel="Processing")
+# def visualize(
+#     input_path: Annotated[Path, typer.Argument(
+#         help="Path to parsed data (JSON/directory) containing structures, BZ, etc.",
+#          exists=True,
+#         file_okay=True,
+#         dir_okay=True,
+#         resolve_path=True,
+#     )],
+#     output_dir: Annotated[Path, typer.Option(
+#         "--output", "-o",
+#         help="Directory to save visualization data (e.g., JSON for React components) and potentially Markdown snippets.",
+#         resolve_path=True,
+#     )] = Path("."),
+#     embed: Annotated[bool, typer.Option(
+#         "--embed", "-e",
+#         help="Generate Markdown snippets for embedding visualizations in mkdocs.",
+#     )] = False,
+# ):
+#     """
+#     Generate a complete visualization of the processed data (metadata, structures, BZ, DOS, bands)
+#     """
+
+#     log.info(f"Starting visualization data generation for: {input_path}")
+#     output_dir.mkdir(parents=True, exist_ok=True)
+#     log.info(f"Visualization data will be saved to: {output_dir}")
+#     if embed:
+#         log.info("Will generate Markdown embedding snippets.")
+
+#     # TODO: Assumes run_visualization can handle a directory.
+#     # If not, add _find_json_files and loop like in summarize.
+
+#     try:
+#         log.info("Visualization data generation started.")
+#         visualize_module.run_visualization(input_path, output_dir, embed)
+#     except Exception as e:
+#         log.error(f"Visualization data generation failed for {input_path}: {e}", exc_info=True)
+#         raise typer.Exit(code=1)
+
+#     log.info("Visualization data generation finished.")
+
 @app.command(rich_help_panel="Processing")
 def visualize(
     input_path: Annotated[Path, typer.Argument(
-        help="Path to parsed data (JSON/directory) containing structures, BZ, etc.",
-         exists=True,
-        file_okay=True,
+        help="Path containing FAIR-generated Markdown summaries.",
+        exists=True,
+        file_okay=False,
         dir_okay=True,
         resolve_path=True,
     )],
-    output_dir: Annotated[Path, typer.Option(
-        "--output", "-o",
-        help="Directory to save visualization data (e.g., JSON for React components) and potentially Markdown snippets.",
-        resolve_path=True,
-    )] = Path("."),
-    embed: Annotated[bool, typer.Option(
-        "--embed", "-e",
-        help="Generate Markdown snippets for embedding visualizations in mkdocs.",
-    )] = False,
+    port: Annotated[int, typer.Option(
+        "--port", "-p",
+        help="Port for FAIR live server (default: 8000).",
+    )] = 8000,
 ):
     """
-    Generate a complete visualization of the processed data (metadata, structures, BZ, DOS, bands)
+    Serve FAIR-generated Markdown files as a browsable website with search enabled.
     """
+    
+    # --- Dependency Check REMOVED ---
+    # We will rely on 'mkdocs' to report if plugins are missing.
 
-    log.info(f"Starting visualization data generation for: {input_path}")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    log.info(f"Visualization data will be saved to: {output_dir}")
-    if embed:
-        log.info("Will generate Markdown embedding snippets.")
-
-    # TODO: Assumes run_visualization can handle a directory.
-    # If not, add _find_json_files and loop like in summarize.
+    log.info(f"Serving FAIR data from: {input_path}")
 
     try:
-        log.info("Visualization data generation started.")
-        visualize_module.run_visualization(input_path, output_dir, embed)
+        # 1. Find the source 'documentation' package
+        pkg_root = files("documentation")
     except Exception as e:
-        log.error(f"Visualization data generation failed for {input_path}: {e}", exc_info=True)
+        log.error(f"Failed to find 'documentation' package data. Is it installed correctly (e.g., 'pip install -e .')? {e}", exc_info=True)
         raise typer.Exit(code=1)
 
-    log.info("Visualization data generation finished.")
+    # 2. Use TemporaryDirectory for automatic creation and cleanup
+    try:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_project_path = Path(temp_dir)
+            
+            # 3. Create a namespaced directory for our custom python files
+            scripts_dir = temp_project_path / "_scripts"
+            scripts_dir.mkdir()
+            (scripts_dir / "__init__.py").touch() # Make it a package
 
+            original_hook_path_str = "material/overrides/hooks/shortcodes.py"
+            # This path is now relative to temp_project_path, which will be in PYTHONPATH
+            new_hook_name_relative = "_scripts/hooks_shortcodes.py" 
+            
+            try:
+                # --- Files to copy ---
+                # Copy mkdocs.yml to root
+                shutil.copy(pkg_root / "mkdocs.yml", temp_project_path / "mkdocs.yml")
+                
+                # Copy macros.py into _scripts
+                if (pkg_root / "macros.py").exists():
+                    shutil.copy(pkg_root / "macros.py", scripts_dir / "macros.py")
+                
+                # Copy hook file into _scripts
+                original_hook_path = pkg_root / original_hook_path_str
+                if original_hook_path.exists():
+                    shutil.copy(original_hook_path, scripts_dir / "hooks_shortcodes.py")
+
+                log.debug(f"Copied project files to {temp_project_path} and namespaced scripts to {scripts_dir}")
+
+            except Exception as e:
+                log.error(f"Failed to copy/namespace files to temp dir: {e}", exc_info=True)
+                raise typer.Exit(code=1)
+
+            # 4. Load, Modify, and Overwrite the temporary mkdocs.yml
+            temp_config_path = temp_project_path / "mkdocs.yml"
+            try:
+                # Load the config
+                with temp_config_path.open("r", encoding="utf-8") as f:
+                    mkdocs_data = yaml.load(f, Loader=yaml.UnsafeLoader)
+                
+                # --- Modify paths ---
+                
+                # 5a. Set user's docs_dir (absolute)
+                mkdocs_data["docs_dir"] = str(input_path.resolve())
+
+                # 5b. Fix theme.custom_dir (absolute)
+                if "theme" in mkdocs_data and "custom_dir" in mkdocs_data["theme"]:
+                    original_custom_dir = mkdocs_data["theme"]["custom_dir"]
+                    mkdocs_data["theme"]["custom_dir"] = str((pkg_root / original_custom_dir).resolve())
+
+                # 5c. Fix 'extra_css' (absolute)
+                if "extra_css" in mkdocs_data:
+                    new_extra_css = []
+                    for css in mkdocs_data["extra_css"]:
+                        if not (css.startswith("http") or css.startswith("/")):
+                            new_extra_css.append(str((pkg_root / "docs" / css).resolve()))
+                        else:
+                            new_extra_css.append(css)
+                    mkdocs_data["extra_css"] = new_extra_css
+
+                # 5d. Fix 'extra_javascript' (absolute)
+                if "extra_javascript" in mkdocs_data:
+                    new_extra_js = []
+                    for js in mkdocs_data["extra_javascript"]:
+                        if not (js.startswith("http") or js.startswith("/")):
+                            new_extra_js.append(str((pkg_root / "docs" / js).resolve()))
+                        else:
+                            new_extra_js.append(js)
+                    mkdocs_data["extra_javascript"] = new_extra_js
+
+                # 5e. Fix logo/favicon (absolute)
+                if "theme" in mkdocs_data and "icon" in mkdocs_data["theme"]:
+                    if "logo" in mkdocs_data["theme"]["icon"]:
+                        logo_path = mkdocs_data["theme"]["icon"]["logo"]
+                        mkdocs_data["theme"]["icon"]["logo"] = str((pkg_root / "docs" / logo_path).resolve())
+                if "theme" in mkdocs_data and "favicon" in mkdocs_data["theme"]:
+                    favicon_path = mkdocs_data["theme"]["favicon"]
+                    mkdocs_data["theme"]["favicon"] = str((pkg_root / "docs" / favicon_path).resolve())
+                if "theme" in mkdocs_data and "logo" in mkdocs_data["theme"]:
+                    logo_path = mkdocs_data["theme"]["logo"]
+                    mkdocs_data["theme"]["logo"] = str((pkg_root / "docs" / logo_path).resolve())
+                
+                # 5f. Fix 'hooks' path (relative to new PYTHONPATH)
+                if "hooks" in mkdocs_data:
+                    new_hooks = []
+                    for hook in mkdocs_data["hooks"]:
+                        if hook == original_hook_path_str:
+                            new_hooks.append(new_hook_name_relative) # Point to _scripts/
+                        else:
+                            new_hooks.append(hook)
+                    mkdocs_data["hooks"] = new_hooks
+
+                # 5g. Fix 'macros' module_name (to point to package)
+                if "plugins" in mkdocs_data:
+                    for plugin in mkdocs_data["plugins"]:
+                        if isinstance(plugin, dict) and "macros" in plugin:
+                            if plugin["macros"].get("module_name") == "macros":
+                                plugin["macros"]["module_name"] = "_scripts.macros"
+                                log.debug("Remapped macros module_name to _scripts.macros")
+                                break
+
+                # 6. Overwrite the config *in the temp dir*
+                with temp_config_path.open("w", encoding="utf-8") as f:
+                    yaml.dump(mkdocs_data, f)
+                
+                log.debug(f"Modified temp config at {temp_config_path} with absolute paths and namespaced scripts")
+
+            except Exception as e:
+                log.error(f"Failed to read/modify/write temp mkdocs.yml: {e}", exc_info=True)
+                raise typer.Exit(code=1)
+
+            # 7. Define the command to run
+            command = [
+                sys.executable, "-m", "mkdocs", "serve",
+                "--config-file", str(temp_config_path.resolve()), # <-- Use absolute path to config
+                "--dev-addr", f"127.0.0.1:{port}"
+            ]
+            
+            # 8. Set up the environment for the subprocess
+            # This is the crucial part. We *prepend* our temp dir to
+            # PYTHONPATH, ensuring the rest of the venv's paths are kept.
+            env = os.environ.copy()
+            python_path = env.get("PYTHONPATH", "")
+            if python_path:
+                env["PYTHONPATH"] = f"{temp_project_path}{os.pathsep}{python_path}"
+            else:
+                env["PYTHONPATH"] = str(temp_project_path)
+            
+            log.info(f"Serving website on http://127.0.0.1:{port} ...")
+            log.info(f"Using config from: {temp_config_path}")
+            log.info(f"Serving Markdown from: {input_path.resolve()}")
+            log.debug(f"Running command: {' '.join(command)}")
+            log.debug(f"Setting PYTHONPATH for subprocess to: {env['PYTHONPATH']}")
+
+
+            # 9. Launch MkDocs
+            try:
+                subprocess.run(
+                    command,
+                    check=True,
+                    # cwd=temp_project_path, # <-- DO NOT SET CWD
+                    env=env, # <-- Pass in modified environment
+                )
+            except KeyboardInterrupt:
+                log.info("Server stopped by user.")
+            except subprocess.CalledProcessError as e:
+                log.error(f"MkDocs serve failed: {e}")
+                if e.returncode == 1:
+                    log.error("This often means a plugin is missing or the config is invalid.")
+            except FileNotFoundError:
+                log.error(f"Error: '{sys.executable}' not found or 'mkdocs' module missing.")
+                log.error("Please ensure MkDocs is installed in your environment: pip install mkdocs-material")
+                raise typer.Exit(code=1)
+
+    except Exception as e:
+        log.error(f"Failed to create/use temporary project directory: {e}", exc_info=True)
+        raise typer.Exit(code=1)
+
+    # 10. Cleanup is automatic when 'with' block exits
+    log.info("Server shut down and temporary files cleaned up.")
 
 @app.command(rich_help_panel="Automated Workflow")
 def all(
