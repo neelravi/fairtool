@@ -1,4 +1,0 @@
-Trigger docs rebuild
-Timestamp: 2025-11-03T19:XX:XXZ
-
-This tiny file triggers the docs CI workflow. Remove after use.

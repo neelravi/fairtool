@@ -1,8 +1,0 @@
-lxml==5.1.1
-numpy>=1.22
-msgpack==0.6.2
-nomad-lab>=1.2.1
-typer>=0.20.0
-mkdocs-material
-pymatgen>=2023.0.0
-mkdocs-macros-plugin
