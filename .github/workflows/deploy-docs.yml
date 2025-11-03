@@ -1,0 +1,47 @@
+name: Build and deploy docs
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install mkdocs mkdocs-material mkdocs-macros-plugin pyyaml
+          # Also install the package in editable mode so we can call fairtool.serve_docs
+          pip install -e .
+
+      - name: Generate temporary mkdocs site (dry-run)
+        run: |
+          python .github/scripts/generate_mkdocs.py
+
+      - name: Build site with mkdocs
+        run: |
+          MKCFG_FILE=.github/mkdocs_config_path.txt
+          if [ ! -f "${MKCFG_FILE}" ]; then echo "mkdocs config path file not found"; exit 1; fi
+          MKCFG=$(cat ${MKCFG_FILE})
+          echo "Using mkdocs config: ${MKCFG}"
+          mkdocs build -f "${MKCFG}"
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          publish_branch: gh-pages
