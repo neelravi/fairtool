@@ -46,7 +46,7 @@ This will install `uv` to `~/.local/bin/uv` by default. Make sure this directory
 You may install Python using uv quickly with:
 
 ```bash
-uv python install 3.9
+uv python install 3.10
 ```
 
 ## 3. Create a Virtual Environment with uv
@@ -104,7 +104,7 @@ fair visualize tests/VASP/ --build
 ```
 
 ## Troubleshooting
-- Ensure you are using Python 3.9 for best compatibility.
+- Ensure you are using Python 3.10+ for best compatibility.
 - If you see `ModuleNotFoundError: No module named 'fairtool'`, make sure your `PYTHONPATH` includes the project root.
 - If `uv` is not found, ensure `~/.local/bin` is in your `PATH`.
 
