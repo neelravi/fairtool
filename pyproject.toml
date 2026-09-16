@@ -13,7 +13,7 @@ description = "A CLI tool for FAIR processing of computational materials science
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.8"
+requires-python = ">=3.9, <3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -24,9 +24,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
 ]
 dependencies = [
-    "lxml==5.1.1",	# Lexical XML
+    "lxml>=5.1.1",	# Lexical XML
     "numpy>=1.22",	# The Great Python library
-    "msgpack==0.6.2",	# Binary Serialization in python
+    "msgpack>=0.6.2",	# Binary Serialization in python
     "nomad-lab>=1.2.1", # Backend for parsing output files
     "typer>=0.20.0",    # CLI framework with rich support
     "mkdocs-material",  # Running the visualization on the localhost

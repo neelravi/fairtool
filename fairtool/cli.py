@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 import logging
 import rich
+from rich.console import Console
 import sys
 from rich.logging import RichHandler
 # Import subcommand functions
@@ -16,7 +17,7 @@ from . import visualize as visualize_module
 from . import export as export_module
 from . import __version__
 
-console = rich.console.Console()
+console = Console()
 
 # Configure logging
 logging.basicConfig(
