@@ -14,25 +14,27 @@ The main 'run_summarization' function orchestrates this flow.
 
 import json
 import logging
-from pathlib import Path
-from typing import Optional, List, Tuple, Dict, Any, Union
 import re
-import pint
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
+import pint
 
 # --- Setup ---
 u = pint.UnitRegistry()
 log = logging.getLogger("fairtool")
 ELEMENTARY_CHARGE_VALUE = 1.602176634e-19  # Elementary charge in Coulombs
-J_PER_EV = ELEMENTARY_CHARGE_VALUE # Alias for clarity
+J_PER_EV = ELEMENTARY_CHARGE_VALUE  # Alias for clarity
 
 # --- Original Helper Functions (Unchanged) ---
 # These functions are well-structured and perform specific tasks.
 
+
 def _extract_energy_lists(scf_iterations: List[dict], energy_key: str) -> Tuple[List[float], List[float]]:
     """
     Helper to safely extract energy lists from scf_iterations.
-    
+
     Args:
         scf_iterations: The list of scf_iteration blocks.
         energy_key: The key of the energy to extract (e.g., "total", "xc").
@@ -43,24 +45,26 @@ def _extract_energy_lists(scf_iterations: List[dict], energy_key: str) -> Tuple[
     energies_J = []
     energies_eV = []
     for iteration in scf_iterations:
-        value = iteration.get('energy', {}).get(energy_key, {}).get('value')
-        
+        value = iteration.get("energy", {}).get(energy_key, {}).get("value")
+
         if value is not None:
             energies_J.append(value)
             try:
                 energies_eV.append(value / J_PER_EV)
             except (ZeroDivisionError, TypeError):
-                energies_eV.append(float('nan'))
+                energies_eV.append(float("nan"))
         else:
-            energies_J.append(float('nan'))
-            energies_eV.append(float('nan'))
+            energies_J.append(float("nan"))
+            energies_eV.append(float("nan"))
     return energies_eV, energies_J
+
 
 def _scalar(x):
     """Unwrap 1-item list/tuple -> value; otherwise return as-is."""
     if isinstance(x, (list, tuple)) and len(x) == 1:
         return x[0]
     return x
+
 
 def _as_qty(v, unit):
     """Attach a unit if v is numeric; return None for missing/sentinel."""
@@ -72,17 +76,19 @@ def _as_qty(v, unit):
     except (TypeError, ValueError):
         return None
 
+
 FIELD_UNITS = {
     "a": (u.m, u.angstrom, "Å", ".3f"),
     "b": (u.m, u.angstrom, "Å", ".3f"),
     "c": (u.m, u.angstrom, "Å", ".3f"),
     "alpha": (u.radian, u.degree, "°", ".0f"),
-    "beta":  (u.radian, u.degree, "°", ".0f"),
+    "beta": (u.radian, u.degree, "°", ".0f"),
     "gamma": (u.radian, u.degree, "°", ".0f"),
-    "volume":          (u.m**3, u.angstrom**3, "Å^3", ".3f"),
-    "atomic_density":  (1/u.m**3, 1/u.angstrom**3, "Å^-3", ".3f"),
-    "mass_density":    (u.kg/u.m**3, u.kg/u.angstrom**3, "kg/Å^3", ".3e"),
+    "volume": (u.m**3, u.angstrom**3, "Å^3", ".3f"),
+    "atomic_density": (1 / u.m**3, 1 / u.angstrom**3, "Å^-3", ".3f"),
+    "mass_density": (u.kg / u.m**3, u.kg / u.angstrom**3, "kg/Å^3", ".3e"),
 }
+
 
 def _convert_field(value, field, default=None, return_numeric=False):
     """
@@ -98,6 +104,7 @@ def _convert_field(value, field, default=None, return_numeric=False):
     num = q.to(to_u).magnitude
     return num if return_numeric else f"{format(num, fmt)} {symbol}"
 
+
 def _strip_parens(s: object, default: str = "unavailable") -> str:
     """Return the string with any parenthetical "( ... )" removed."""
     if s is None:
@@ -108,7 +115,8 @@ def _strip_parens(s: object, default: str = "unavailable") -> str:
     cleaned = re.sub(r"\s*\(.*?\)", "", s)
     return cleaned.strip() or default
 
-def _format_field_numeric(value, field, default = None):
+
+def _format_field_numeric(value, field, default=None):
     """Return a string formatted according to FIELD_UNITS for the given field."""
     try:
         num = _convert_field(value, field, default=None, return_numeric=True)
@@ -122,7 +130,9 @@ def _format_field_numeric(value, field, default = None):
     except Exception:
         return default
 
+
 # --- New Modular Functions ---
+
 
 def load_data(input_path: Path) -> Optional[Dict[str, Any]]:
     """Loads and parses the JSON data file."""
@@ -132,25 +142,26 @@ def load_data(input_path: Path) -> Optional[Dict[str, Any]]:
             data = json.load(f)
         log.info("Successfully loaded JSON data.")
         if not isinstance(data, dict) or not data:
-             log.warning("No valid data loaded.")
-             return None
+            log.warning("No valid data loaded.")
+            return None
         return data
     except Exception as e:
         log.error(f"Failed to load or parse JSON: {e}")
         return None
 
+
 def extract_context(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Extracts all necessary data from the raw JSON dict into a flat context.
-    
+
     This context is used by the Markdown generator.
     """
     context = {}
-    
+
     # --- Safe Data Extraction ---
     run_list = data.get("run", [])
     run = run_list[0] if run_list else {}
-    context['metadata'] = data.get("metadata", {})
+    context["metadata"] = data.get("metadata", {})
     results = data.get("results", {})
 
     method = results.get("method", {})
@@ -160,9 +171,9 @@ def extract_context(data: Dict[str, Any]) -> Dict[str, Any]:
 
     # Safely get sim data
     nested_dicts = [v for v in simulation.values() if isinstance(v, dict)]
-    context['sim_first_nested_data'] = nested_dicts[0] if len(nested_dicts) > 0 else {}
-    context['sim_second_nested_data'] = nested_dicts[1] if len(nested_dicts) > 1 else {}
-    
+    context["sim_first_nested_data"] = nested_dicts[0] if len(nested_dicts) > 0 else {}
+    context["sim_second_nested_data"] = nested_dicts[1] if len(nested_dicts) > 1 else {}
+
     # Safely get topology data
     t_original_data = {}
     t_cell_data = {}
@@ -174,12 +185,12 @@ def extract_context(data: Dict[str, Any]) -> Dict[str, Any]:
             t_original_data = obj
         elif label in ("primitive cell", "conventional cell"):
             t_cell_data = obj
-            
-    context['t_original_data'] = t_original_data
-    context['t_cell_data'] = t_cell_data
-    context['original_cell'] = t_original_data.get("cell", {})
-    context['cell_type_data'] = t_cell_data.get("cell", {})
-    context['t_cell_data_sym'] = t_cell_data.get("symmetry", {})
+
+    context["t_original_data"] = t_original_data
+    context["t_cell_data"] = t_cell_data
+    context["original_cell"] = t_original_data.get("cell", {})
+    context["cell_type_data"] = t_cell_data.get("cell", {})
+    context["t_cell_data_sym"] = t_cell_data.get("symmetry", {})
 
     # Safely get calculation data
     calculation = run.get("calculation", [])
@@ -189,24 +200,24 @@ def extract_context(data: Dict[str, Any]) -> Dict[str, Any]:
     # Safely get k_mesh data
     runmethod = run.get("method", [])
     k_mesh = runmethod[0].get("k_mesh", {}) if runmethod else {}
-    
+
     # --- Populate Context ---
-    context['method'] = method
-    context['simulation'] = simulation
-    context['k_mesh'] = k_mesh
-    
+    context["method"] = method
+    context["simulation"] = simulation
+    context["k_mesh"] = k_mesh
+
     # --- **NEW:** Extract Final Energies (from run.calculation[0].energy) ---
     final_energy_data = calc.get("energy", {})
     final_energies_ev = {}
     for key, value_dict in final_energy_data.items():
-        if isinstance(value_dict, dict) and 'value' in value_dict:
-            value_j = value_dict.get('value')
+        if isinstance(value_dict, dict) and "value" in value_dict:
+            value_j = value_dict.get("value")
             if value_j is not None:
                 try:
                     final_energies_ev[key] = value_j / J_PER_EV
                 except (ZeroDivisionError, TypeError):
-                    final_energies_ev[key] = float('nan')
-    context['final_energies_ev'] = final_energies_ev
+                    final_energies_ev[key] = float("nan")
+    context["final_energies_ev"] = final_energies_ev
 
     # --- **NEW:** Extract Band Gap Info ---
     band_gap_list = calc.get("band_gap", [])
@@ -215,9 +226,9 @@ def extract_context(data: Dict[str, Any]) -> Dict[str, Any]:
     if band_gap_j is not None:
         try:
             # Add band gap in eV to the final_energies_ev dict for convenience
-            context['final_energies_ev']['band_gap'] = band_gap_j / J_PER_EV
+            context["final_energies_ev"]["band_gap"] = band_gap_j / J_PER_EV
         except (ZeroDivisionError, TypeError):
-            context['final_energies_ev']['band_gap'] = float('nan')
+            context["final_energies_ev"]["band_gap"] = float("nan")
 
     # --- **NEW:** Extract SCF Iteration Energies ---
     log.info("Extracting SCF energy data.")
@@ -229,14 +240,15 @@ def extract_context(data: Dict[str, Any]) -> Dict[str, Any]:
     # Use the longest list to determine the number of steps
     n_steps = max(len(total_ev), len(free_ev), len(total_t0_ev))
     for i in range(n_steps):
-        scf_table_data.append({
-            'step': i + 1,
-            'total_ev': total_ev[i] if i < len(total_ev) else None,
-            'free_ev': free_ev[i] if i < len(free_ev) else None,
-            'total_t0_ev': total_t0_ev[i] if i < len(total_t0_ev) else None,
-        })
-    context['scf_table_data'] = scf_table_data
-
+        scf_table_data.append(
+            {
+                "step": i + 1,
+                "total_ev": total_ev[i] if i < len(total_ev) else None,
+                "free_ev": free_ev[i] if i < len(free_ev) else None,
+                "total_t0_ev": total_t0_ev[i] if i < len(total_t0_ev) else None,
+            }
+        )
+    context["scf_table_data"] = scf_table_data
 
     # --- **NEW:** Extract DOS Data ---
     log.info("Extracting DOS data for charting.")
@@ -248,29 +260,29 @@ def extract_context(data: Dict[str, Any]) -> Dict[str, Any]:
             dos_data = dos_electronic[0]
             energies_j = np.array(dos_data.get("energies", []))
             fermi_j = dos_data.get("energy_fermi")
-            dos_total = dos_data.get("total", []) # List of value objects
-            
+            dos_total = dos_data.get("total", [])  # List of value objects
+
             if energies_j.any() and fermi_j is not None and dos_total:
                 # Convert energies to eV and shift relative to Fermi
                 energies_ev = (energies_j - fermi_j) / J_PER_EV
-                
+
                 is_spin_polarized = dos_data.get("spin_polarized", False)
-                
+
                 if is_spin_polarized and len(dos_total) >= 2:
                     dos_up = np.array(dos_total[0].get("value", []))
-                    dos_down = np.array(dos_total[1].get("value", [])) * -1 # Negate for plotting
-                    
+                    dos_down = np.array(dos_total[1].get("value", [])) * -1  # Negate for plotting
+
                     if len(energies_ev) == len(dos_up) == len(dos_down):
                         for e, up, down in zip(energies_ev, dos_up, dos_down):
-                            dos_chart_data.append({'energy_ev': e, 'dos_up': up, 'dos_down': down})
+                            dos_chart_data.append({"energy_ev": e, "dos_up": up, "dos_down": down})
                     else:
                         log.warning("DOS energy and value array lengths mismatch (spin-polarized).")
-                
+
                 elif not is_spin_polarized and len(dos_total) >= 1:
                     dos = np.array(dos_total[0].get("value", []))
                     if len(energies_ev) == len(dos):
-                         for e, d in zip(energies_ev, dos):
-                            dos_chart_data.append({'energy_ev': e, 'dos': d})
+                        for e, d in zip(energies_ev, dos):
+                            dos_chart_data.append({"energy_ev": e, "dos": d})
                     else:
                         log.warning("DOS energy and value array lengths mismatch (non-spin-polarized).")
             else:
@@ -278,50 +290,53 @@ def extract_context(data: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         log.error(f"Failed to process DOS data: {e}", exc_info=True)
 
-    context['dos_chart_data'] = dos_chart_data
-    context['dos_is_spin_polarized'] = is_spin_polarized
+    context["dos_chart_data"] = dos_chart_data
+    context["dos_is_spin_polarized"] = is_spin_polarized
     log.info(f"Finished extracting DOS data. Found {len(dos_chart_data)} points.")
 
     return context
 
+
 # --- New Markdown Table Generator Functions ---
+
 
 def _add_row(rows: List[str], label: str, value: Any, unit: str = "", bold_value: bool = True):
     """Helper to add a formatted Markdown row if value is valid."""
     if value is None or value == "" or value == [] or value == "unavailable":
         return  # Skip row
-    
+
     # Special handling for _strip_parens default
     if isinstance(value, str) and value.strip() == "unavailable":
         return
 
     value_str = f"**{value}**" if bold_value else str(value)
-    
+
     if unit:
         rows.append(f"    | {label} | {value_str} | {unit} |")
     else:
         rows.append(f"    | {label} | {value_str} |")
 
+
 def _generate_material_composition_table(context: Dict[str, Any]) -> str:
     """Generates the Markdown table for Material Composition."""
-    t_original_data = context.get('t_original_data', {})
+    t_original_data = context.get("t_original_data", {})
     rows = []
-    
+
     _add_row(rows, "Chemical formula (IUPAC)", t_original_data.get("chemical_formula_iupac"))
     _add_row(rows, "Chemical formula (Reduced)", t_original_data.get("chemical_formula_reduced"))
     _add_row(rows, "Label", t_original_data.get("label"))
-    
+
     elements = t_original_data.get("elements")
     _add_row(rows, "Elements", ", ".join(elements) if elements else None)
     if elements:
-         _add_row(rows, "Number of elements", len(elements))
-    
+        _add_row(rows, "Number of elements", len(elements))
+
     _add_row(rows, "Number of atoms", t_original_data.get("n_atoms"))
     _add_row(rows, "Dimensionality", t_original_data.get("dimensionality"))
 
     if not rows:
         return ""
-        
+
     header = [
         f"- ### Material Composition - {t_original_data.get('label', 'Original Material')}\n",
         "    | Property                     | Value                       |",
@@ -329,13 +344,13 @@ def _generate_material_composition_table(context: Dict[str, Any]) -> str:
     ]
     return "\n".join(header + rows)
 
+
 def _generate_lattice_table(context: Dict[str, Any], cell_key: str, label_key: str) -> str:
     """Generates the Markdown tables for Lattice properties."""
     cell_data = context.get(cell_key, {})
-    label = context.get(label_key, {}).get('label', 'unavailable')
     if not cell_data:
         return ""
-        
+
     rows_const = []
     rows_angles = []
     rows_quant = []
@@ -343,44 +358,58 @@ def _generate_lattice_table(context: Dict[str, Any], cell_key: str, label_key: s
     _add_row(rows_const, "a", _format_field_numeric(cell_data.get("a"), "a"), "Angstrom")
     _add_row(rows_const, "b", _format_field_numeric(cell_data.get("b"), "b"), "Angstrom")
     _add_row(rows_const, "c", _format_field_numeric(cell_data.get("c"), "c"), "Angstrom")
-    
+
     _add_row(rows_angles, "Alpha", _format_field_numeric(cell_data.get("alpha"), "alpha"), "Degrees")
     _add_row(rows_angles, "Beta", _format_field_numeric(cell_data.get("beta"), "beta"), "Degrees")
     _add_row(rows_angles, "Gamma", _format_field_numeric(cell_data.get("gamma"), "gamma"), "Degrees")
 
     _add_row(rows_quant, "Volume", _format_field_numeric(cell_data.get("volume"), "volume"), "Å³")
-    _add_row(rows_quant, "Mass density", _format_field_numeric(cell_data.get("mass_density"), "mass_density"), "kg / Å³")
-    _add_row(rows_quant, "Atomic density", _format_field_numeric(cell_data.get("atomic_density"), "atomic_density"), "Å⁻³")
+    _add_row(
+        rows_quant, "Mass density", _format_field_numeric(cell_data.get("mass_density"), "mass_density"), "kg / Å³"
+    )
+    _add_row(
+        rows_quant, "Atomic density", _format_field_numeric(cell_data.get("atomic_density"), "atomic_density"), "Å⁻³"
+    )
 
     if not (rows_const or rows_angles or rows_quant):
         return ""
 
     table = [f"- ### Lattice ({label_key})\n"]
     if rows_const:
-        table.extend([
-            "    | Lattice constant | Value     | Units |",
-            "    |------------------|-----------|-------|",
-        ] + rows_const)
+        table.extend(
+            [
+                "    | Lattice constant | Value     | Units |",
+                "    |------------------|-----------|-------|",
+            ]
+            + rows_const
+        )
     if rows_angles:
-        table.extend([
-            "\n    | Lattice angles    | Value     | Units |",
-            "    |------------------|-----------|-------|",
-        ] + rows_angles)
+        table.extend(
+            [
+                "\n    | Lattice angles    | Value     | Units |",
+                "    |------------------|-----------|-------|",
+            ]
+            + rows_angles
+        )
     if rows_quant:
-        table.extend([
-            "\n    | Cell quantities   | Value     | Units |",
-            "    |------------------|-----------|-------|",
-        ] + rows_quant)
-    
+        table.extend(
+            [
+                "\n    | Cell quantities   | Value     | Units |",
+                "    |------------------|-----------|-------|",
+            ]
+            + rows_quant
+        )
+
     return "\n".join(table)
+
 
 def _generate_symmetry_table(context: Dict[str, Any]) -> str:
     """Generates the Markdown table for Symmetry properties."""
-    t_cell_data_sym = context.get('t_cell_data_sym', {})
-    t_cell_data = context.get('t_cell_data', {})
+    t_cell_data_sym = context.get("t_cell_data_sym", {})
+    t_cell_data = context.get("t_cell_data", {})
     if not t_cell_data_sym:
         return ""
-        
+
     rows = []
     _add_row(rows, "Crystal system", t_cell_data_sym.get("crystal_system"))
     _add_row(rows, "Bravais lattice", t_cell_data_sym.get("bravais_lattice"))
@@ -391,11 +420,11 @@ def _generate_symmetry_table(context: Dict[str, Any]) -> str:
     _add_row(rows, "Hall symbol", t_cell_data_sym.get("hall_symbol"))
     _add_row(rows, "Prototype name", t_cell_data_sym.get("prototype_name"))
     _add_row(rows, "Prototype label aflow", t_cell_data_sym.get("prototype_label_aflow"))
-    
+
     if not rows:
         return ""
 
-    label = t_cell_data.get('label', 'unavailable')
+    label = t_cell_data.get("label", "unavailable")
     header = [
         f"- ### Symmetry ({label})\n",
         "    | Property                       | Value            |",
@@ -403,18 +432,19 @@ def _generate_symmetry_table(context: Dict[str, Any]) -> str:
     ]
     return "\n".join(header + rows)
 
+
 def _generate_kpoints_table(context: Dict[str, Any]) -> str:
     """Generates the Markdown table for K points information."""
-    k_mesh = context.get('k_mesh', {})
+    k_mesh = context.get("k_mesh", {})
     if not k_mesh:
         return ""
-    
+
     rows = []
     _add_row(rows, "Dimensionality", k_mesh.get("dimensionality"))
     _add_row(rows, "Sampling method", k_mesh.get("sampling_method"))
     _add_row(rows, "Number of points", k_mesh.get("n_points"))
     _add_row(rows, "Grid", k_mesh.get("grid"))
-    
+
     if not rows:
         return ""
 
@@ -425,34 +455,37 @@ def _generate_kpoints_table(context: Dict[str, Any]) -> str:
     ]
     return "\n".join(header + rows)
 
+
 def _generate_metadata_table(context: Dict[str, Any]) -> str:
     """Generates the Markdown table for Calculation Metadata."""
-    metadata = context.get('metadata', {})
-    method = context.get('method', {})
-    simulation = context.get('simulation', {})
-    sim_first = context.get('sim_first_nested_data', {})
-    sim_second = context.get('sim_second_nested_data', {})
+    metadata = context.get("metadata", {})
+    method = context.get("method", {})
+    simulation = context.get("simulation", {})
+    sim_first = context.get("sim_first_nested_data", {})
+    sim_second = context.get("sim_second_nested_data", {})
 
     rows = []
-    _add_row(rows, "**Method name**", method.get('method_name'), bold_value=False)
-    _add_row(rows, "**Workflow name**", method.get('workflow_name'), bold_value=False)
-    _add_row(rows, "**Program name**", simulation.get('program_name'), bold_value=False)
-    _add_row(rows, "**Program version**", _strip_parens(simulation.get('program_version'), default=None), bold_value=False)
-    _add_row(rows, "**Basis set type**", sim_first.get('basis_set_type'), bold_value=False)
-    _add_row(rows, "**Core electron treatment**", sim_first.get('core_electron_treatment'), bold_value=False)
-    _add_row(rows, "**Jacob's ladder**", sim_first.get('jacobs_ladder'), bold_value=False)
-    
-    xc_names = sim_first.get('xc_functional_names')
+    _add_row(rows, "**Method name**", method.get("method_name"), bold_value=False)
+    _add_row(rows, "**Workflow name**", method.get("workflow_name"), bold_value=False)
+    _add_row(rows, "**Program name**", simulation.get("program_name"), bold_value=False)
+    _add_row(
+        rows, "**Program version**", _strip_parens(simulation.get("program_version"), default=None), bold_value=False
+    )
+    _add_row(rows, "**Basis set type**", sim_first.get("basis_set_type"), bold_value=False)
+    _add_row(rows, "**Core electron treatment**", sim_first.get("core_electron_treatment"), bold_value=False)
+    _add_row(rows, "**Jacob's ladder**", sim_first.get("jacobs_ladder"), bold_value=False)
+
+    xc_names = sim_first.get("xc_functional_names")
     _add_row(rows, "**XC functional names**", ", ".join(xc_names) if xc_names else None, bold_value=False)
-    
-    _add_row(rows, "**Code-specific tier**", sim_second.get('native_tier'), bold_value=False)
-    _add_row(rows, "**Basis set**", sim_second.get('basis_set'), bold_value=False)
-    _add_row(rows, "**Entry type**", metadata.get('entry_type'), bold_value=False)
-    _add_row(rows, "**Entry name**", metadata.get('entry_name'), bold_value=False)
-    
-    mainfile = metadata.get('mainfile')
+
+    _add_row(rows, "**Code-specific tier**", sim_second.get("native_tier"), bold_value=False)
+    _add_row(rows, "**Basis set**", sim_second.get("basis_set"), bold_value=False)
+    _add_row(rows, "**Entry type**", metadata.get("entry_type"), bold_value=False)
+    _add_row(rows, "**Entry name**", metadata.get("entry_name"), bold_value=False)
+
+    mainfile = metadata.get("mainfile")
     _add_row(rows, "**Mainfile**", Path(mainfile).name if mainfile else None, bold_value=False)
-    
+
     if not rows:
         return ""
 
@@ -466,17 +499,14 @@ def _generate_metadata_table(context: Dict[str, Any]) -> str:
 
 def _generate_final_energies_table(context: Dict[str, Any]) -> str:
     """Generates the Markdown table for final energies."""
-    final_energies_ev = context.get('final_energies_ev', {})
+    final_energies_ev = context.get("final_energies_ev", {})
     if not final_energies_ev:
         return ""
-    
+
     rows = []
     # Define preferred order and formatting
-    key_order = [
-        "total", "free", "total_t0", "fermi", 
-        "highest_occupied", "lowest_unoccupied", "band_gap"
-    ]
-    
+    key_order = ["total", "free", "total_t0", "fermi", "highest_occupied", "lowest_unoccupied", "band_gap"]
+
     # Custom labels for clarity
     label_map = {
         "total": "Total",
@@ -485,22 +515,22 @@ def _generate_final_energies_table(context: Dict[str, Any]) -> str:
         "fermi": "Fermi Energy",
         "highest_occupied": "Highest Occupied (VBM)",
         "lowest_unoccupied": "Lowest Unoccupied (CBM)",
-        "band_gap": "Band Gap"
+        "band_gap": "Band Gap",
     }
-    
+
     processed_keys = set()
-    
+
     for key in key_order:
         if key in final_energies_ev:
             value = final_energies_ev[key]
-            label = label_map.get(key, key.replace('_', ' ').title())
+            label = label_map.get(key, key.replace("_", " ").title())
             rows.append(f"    | **{label}** | {value:.6f} |")
             processed_keys.add(key)
-            
+
     # Add any other keys not in the preferred list
     for key, value in final_energies_ev.items():
         if key not in processed_keys:
-            label = label_map.get(key, key.replace('_', ' ').title())
+            label = label_map.get(key, key.replace("_", " ").title())
             rows.append(f"    | {label} | {value:.6f} |")
 
     table = [
@@ -511,24 +541,25 @@ def _generate_final_energies_table(context: Dict[str, Any]) -> str:
     table.extend(rows)
     return "\n".join(table)
 
+
 def _generate_scf_energies_table(context: Dict[str, Any]) -> str:
     """Generates the Markdown table for SCF iteration energies."""
-    scf_table_data = context.get('scf_table_data', [])
+    scf_table_data = context.get("scf_table_data", [])
     if not scf_table_data:
         return ""
-        
+
     rows = []
     for item in scf_table_data:
-        step = item['step']
-        
+        step = item["step"]
+
         def fmt_val(v):
             if v is None or np.isnan(v):
                 return "N/A"
             return f"{v:.5f}"
 
-        total = fmt_val(item['total_ev'])
-        free = fmt_val(item['free_ev'])
-        total_t0 = fmt_val(item['total_t0_ev'])
+        total = fmt_val(item["total_ev"])
+        free = fmt_val(item["free_ev"])
+        total_t0 = fmt_val(item["total_t0_ev"])
         rows.append(f"| {step} | {total} | {free} | {total_t0} |")
 
     table = [
@@ -540,12 +571,11 @@ def _generate_scf_energies_table(context: Dict[str, Any]) -> str:
     return "\n".join(table)
 
 
-
 def _generate_scf_chart_html(context: Dict[str, Any]) -> str:
     """
     Generates the HTML and JavaScript block for the Google Chart.
     """
-    scf_table_data = context.get('scf_table_data', [])
+    scf_table_data = context.get("scf_table_data", [])
     if not scf_table_data:
         return ""
 
@@ -606,16 +636,17 @@ def _generate_scf_chart_html(context: Dict[str, Any]) -> str:
 """
     return html_js_block
 
+
 def _generate_dos_chart_html(context: Dict[str, Any]) -> str:
     """
     Generates the HTML and JavaScript block for the DOS Google Chart.
     """
-    dos_chart_data = context.get('dos_chart_data', [])
+    dos_chart_data = context.get("dos_chart_data", [])
     if not dos_chart_data:
         log.info("No DOS chart data found, skipping chart generation.")
         return ""
 
-    is_spin_polarized = context.get('dos_is_spin_polarized', False)
+    is_spin_polarized = context.get("dos_is_spin_polarized", False)
     dos_data_json = json.dumps(dos_chart_data)
 
     # We must be careful with indentation in the JS block.
@@ -678,20 +709,21 @@ def _generate_dos_chart_html(context: Dict[str, Any]) -> str:
     return html_js_block
 
 
-
 def generate_markdown(context: Dict[str, Any]) -> str:
     """
     Generates the full Markdown report string from the extracted context.
     """
     # Pull data from context for readability
-    metadata = context.get('metadata', {})
-    t_original_data = context.get('t_original_data', {})
-    t_cell_data = context.get('t_cell_data', {})
+    metadata = context.get("metadata", {})
+    t_original_data = context.get("t_original_data", {})
+    t_cell_data = context.get("t_cell_data", {})
 
     # --- Generate table strings ---
     material_table = _generate_material_composition_table(context)
-    lattice_original_table = _generate_lattice_table(context, 'original_cell', t_original_data.get('label', 'unavailable'))
-    lattice_cell_table = _generate_lattice_table(context, 'cell_type_data', t_cell_data.get('label', 'unavailable'))
+    lattice_original_table = _generate_lattice_table(
+        context, "original_cell", t_original_data.get("label", "unavailable")
+    )
+    lattice_cell_table = _generate_lattice_table(context, "cell_type_data", t_cell_data.get("label", "unavailable"))
     symmetry_table = _generate_symmetry_table(context)
     kpoints_table = _generate_kpoints_table(context)
     metadata_table = _generate_metadata_table(context)
@@ -703,11 +735,10 @@ def generate_markdown(context: Dict[str, Any]) -> str:
     # --- **NEW:** Generate DOS Chart ---
     dos_chart_html = _generate_dos_chart_html(context)
 
-
     # --- Main Markdown f-string ---
     # This is now much cleaner, reading directly from the context.
     markdown_content = f"""
-# __{metadata.get('entry_name', 'FAIR Parsed Report')}__
+# __{metadata.get("entry_name", "FAIR Parsed Report")}__
 
 <div class="grid cards" markdown>
 
@@ -760,6 +791,7 @@ def generate_markdown(context: Dict[str, Any]) -> str:
 """
     return markdown_content
 
+
 def save_report(content: str, input_path: Path, output_dir: Path):
     """Saves the generated Markdown content to a file."""
     # The output name is based on the *input* JSON file name
@@ -775,7 +807,9 @@ def save_report(content: str, input_path: Path, output_dir: Path):
     except Exception as e:
         log.error(f"Failed to write summary file: {e}")
 
+
 # --- Main Orchestration Function ---
+
 
 def run_summarization(input_path: Path, output_dir: Path, template_path: Optional[str] = None):
     """
@@ -786,7 +820,7 @@ def run_summarization(input_path: Path, output_dir: Path, template_path: Optiona
         output_dir: Directory to save the summary report.
         template_path: Optional path to a custom template (not used here).
     """
-    
+
     # 1. Load Data
     data = load_data(input_path)
     if not data:
@@ -814,23 +848,22 @@ def run_summarization(input_path: Path, output_dir: Path, template_path: Optiona
 
     log.info("Summarization process completed.")
 
+
 # --- Example Usage (if run as a script) ---
 if __name__ == "__main__":
     # Configure logging for standalone script testing
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
     # Define dummy paths for testing
     # Assumes 'fair_parsed_vasprun.json' is in the same directory
     # and we want to output to a 'summary_output' directory
-    
+
     script_dir = Path(__file__).parent
     test_input = script_dir / "fair_parsed_vasprun.json"
     test_output_dir = script_dir / "summary_output"
-    
+
     log.info(f"Running summarization for: {test_input}")
     if test_input.exists():
         run_summarization(test_input, test_output_dir)
     else:
         log.error(f"Test input file not found: {test_input}")
-

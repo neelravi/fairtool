@@ -32,6 +32,17 @@ dependencies = [
     "mkdocs-material",  # Running the visualization on the localhost
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+]
+dev = [
+    "ruff>=0.4.0",
+    "pre-commit>=3.0.0",
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -44,3 +55,27 @@ where = ["."]
 [project.scripts]
 fair = "fairtool.cli:app"
 
+[tool.coverage.run]
+source = ["fairtool"]
+branch = true
+omit = [
+    "fairtool/__main__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+]
+show_missing = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501", "W291", "W293"]

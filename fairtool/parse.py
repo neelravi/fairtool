@@ -4,22 +4,23 @@
 
 import json
 import logging
-import pint
-from pathlib import Path
 import subprocess
 import time
+from pathlib import Path
+from typing import Optional
+
 import numpy as np
-from typing import Optional  
-from pymatgen.core import Structure, Lattice 
+import pint
+from pymatgen.core import Structure
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
-import os
 # from electronic_parsers import auto
 ELEMENTARY_CHARGE_VALUE = 1.602176634e-19  # Elementary charge in Coulombs, used for energy conversion if needed
 
 
 log = logging.getLogger(__name__)
 u = pint.UnitRegistry()
+
 
 def _create_structure_json(full_data: dict, output_dir: Path, base_name: str):
     """
@@ -65,17 +66,9 @@ def _create_structure_json(full_data: dict, output_dir: Path, base_name: str):
         # site.coords is Cartesian coords in Å
         cart_xyz = np.array(site.coords).tolist()
         frac = np.array(site.frac_coords).tolist()
-        sites_out.append({
-            "element": str(site.specie),
-            "xyz": cart_xyz,
-            "frac_coords": frac
-        })
+        sites_out.append({"element": str(site.specie), "xyz": cart_xyz, "frac_coords": frac})
 
-    data = {
-        "lattice": {"matrix": lattice_matrix},
-        "sites": sites_out,
-        "formula": structure.composition.reduced_formula
-    }
+    data = {"lattice": {"matrix": lattice_matrix}, "sites": sites_out, "formula": structure.composition.reduced_formula}
 
     # 4) Save file
     output_path = output_dir / "fair-structure.json"
@@ -91,10 +84,10 @@ def _create_structure_json(full_data: dict, output_dir: Path, base_name: str):
 def _nomad_atoms_to_pymatgen(atoms_block: dict) -> Optional[Structure]:
     """
     Converts a NOMAD 'atoms' block (using meters) into a pymatgen Structure (using Angstroms).
-    
+
     Args:
         atoms_block: A dictionary corresponding to the 'atoms' block from the NOMAD archive.
-    
+
     Returns:
         A pymatgen.core.Structure object, or None if conversion fails.
     """
@@ -112,10 +105,7 @@ def _nomad_atoms_to_pymatgen(atoms_block: dict) -> Optional[Structure]:
 
         # Create pymatgen Structure object
         structure = Structure(
-            lattice=lattice_matrix_A,
-            species=species,
-            coords=cart_coords_A,
-            coords_are_cartesian=True
+            lattice=lattice_matrix_A, species=species, coords=cart_coords_A, coords_are_cartesian=True
         )
         return structure
     except Exception as e:
@@ -131,14 +121,14 @@ def run_parser(input_file: Path, output_dir: Path, force: bool) -> bool:
         input_file: Path to the calculation output file.
         output_dir: Directory to save the parsed JSON and Markdown.
         force: Whether to overwrite existing output files.
-        
+
     Returns:
         bool: True if parsing was skipped, False otherwise.
     """
     # Define output file paths
     base_name = input_file.stem
     json_output_path = output_dir / f"fair_parsed_{base_name}.json"
-    
+
     # Unused variable removed
     # md_output_path = output_dir / f"fair_summarized_{base_name}.md"
 
@@ -147,13 +137,13 @@ def run_parser(input_file: Path, output_dir: Path, force: bool) -> bool:
     # If not forcing, check existing parsed JSON metadata to decide whether to skip
     if not force and json_output_path.exists():
         try:
-            with open(json_output_path, 'r', encoding='utf-8') as jf:
+            with open(json_output_path, "r", encoding="utf-8") as jf:
                 existing = json.load(jf)
             fair_time = None
             if isinstance(existing, dict):
-                md = existing.get('metadata')
+                md = existing.get("metadata")
                 if isinstance(md, dict):
-                    fair_time = md.get('fair_parse_time')
+                    fair_time = md.get("fair_parse_time")
             try:
                 file_mtime = input_file.stat().st_mtime
             except Exception:
@@ -163,21 +153,16 @@ def run_parser(input_file: Path, output_dir: Path, force: bool) -> bool:
                 try:
                     if float(fair_time) >= float(file_mtime):
                         log.info(f"Skipping parse for {input_file.name} — unchanged since last parse.")
-                        return True # Return True to indicate skipped
+                        return True  # Return True to indicate skipped
                 except Exception:
-                    log.debug(f"Could not compare times; will re-parse.")
+                    log.debug("Could not compare times; will re-parse.")
         except Exception:
             log.debug(f"Could not read existing parsed JSON {json_output_path}; will re-parse.")
 
     log.info(f"Attempting to parse {input_file.name} ...")
 
     # The command to run, broken into a list for subprocess
-    command = [
-        "nomad", "parse",
-        "--show-archive",
-        "--show-metadata",
-        str(input_file)
-    ]
+    command = ["nomad", "parse", "--show-archive", "--show-metadata", str(input_file)]
 
     try:
         # Run the NOMAD parser command
@@ -185,8 +170,8 @@ def run_parser(input_file: Path, output_dir: Path, force: bool) -> bool:
             command,
             capture_output=True,
             text=True,  # To get stdout/stderr as strings
-            check=True, # To raise CalledProcessError on non-zero exit codes
-            encoding='utf-8'
+            check=True,  # To raise CalledProcessError on non-zero exit codes
+            encoding="utf-8",
         )
 
         raw_json_output = process.stdout
@@ -210,8 +195,8 @@ def run_parser(input_file: Path, output_dir: Path, force: bool) -> bool:
                     for method_item in run_item["method"]:
                         if "k_mesh" in method_item and isinstance(method_item["k_mesh"], dict):
                             if "points" in method_item["k_mesh"] and isinstance(method_item["k_mesh"]["points"], dict):
-                                method_item["k_mesh"]["points"].pop("im", None) # Safe pop
-                
+                                method_item["k_mesh"]["points"].pop("im", None)  # Safe pop
+
                 if "calculation" in run_item and isinstance(run_item["calculation"], list):
                     for calc_item in run_item["calculation"]:
                         # calc_item.pop("dos_electronic", None) # Safe pop
@@ -239,12 +224,12 @@ def run_parser(input_file: Path, output_dir: Path, force: bool) -> bool:
         log.info(f"Saving filtered parsed data to {json_output_path}")
         try:
             # Add fair_parse_time *after* filtering
-            if "metadata" not in full_data or not isinstance(full_data.get('metadata'), dict):
+            if "metadata" not in full_data or not isinstance(full_data.get("metadata"), dict):
                 full_data["metadata"] = {}
             full_data["metadata"]["fair_parse_time"] = time.time()
-            
-            with open(json_output_path, 'w', encoding='utf-8') as f:
-                json.dump(full_data, f, indent=2,ensure_ascii=False)
+
+            with open(json_output_path, "w", encoding="utf-8") as f:
+                json.dump(full_data, f, indent=2, ensure_ascii=False)
             log.info(f"Successfully saved JSON: {json_output_path.name}")
 
             # Also create structure JSON
@@ -260,14 +245,17 @@ def run_parser(input_file: Path, output_dir: Path, force: bool) -> bool:
         log.error("`nomad` command not found. Is NOMAD installed and in your system's PATH?")
         raise
     except subprocess.CalledProcessError as e:
-            log.error(f"NOMAD parsing command failed for {input_file.name} with exit code {e.returncode}: {e.stderr}", exc_info=False)
-            raise
+        log.error(
+            f"NOMAD parsing command failed for {input_file.name} with exit code {e.returncode}: {e.stderr}",
+            exc_info=False,
+        )
+        raise
     except json.JSONDecodeError as e:
         log.error(f"Failed to decode JSON output from NOMAD parser for {input_file.name}: {e}")
-        log.error(f"Problematic output snippet: {raw_json_output[e.pos:e.pos+200]}...")
+        log.error(f"Problematic output snippet: {raw_json_output[e.pos : e.pos + 200]}...")
         raise
     except Exception as e:
         log.error(f"An unexpected error occurred during parsing of {input_file.name}: {e}", exc_info=True)
         raise
 
-    return False # Return False to indicate parsing was attempted
+    return False  # Return False to indicate parsing was attempted

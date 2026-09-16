@@ -1,6 +1,12 @@
 
 # fairtool - Computational Materials Data Processing made FAIR
 
+[![Tests & Coverage](https://github.com/neelravi/fairtool/actions/workflows/python-app.yml/badge.svg)](https://github.com/neelravi/fairtool/actions/workflows/python-app.yml)
+[![Coverage Status](https://img.shields.io/badge/coverage-67%25-brightgreen.svg)](https://github.com/neelravi/fairtool/actions/workflows/python-app.yml)
+[![Lint and Code Quality](https://github.com/neelravi/fairtool/actions/workflows/lint.yml/badge.svg)](https://github.com/neelravi/fairtool/actions/workflows/lint.yml)
+[![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 <img width="800" alt="Fairtool" src="./documentation/docs/assets/images/fairtool.png"/>
 
 FAIR Tool is a command-line interface for processing, analyzing, and visualizing computational materials data.
@@ -72,6 +78,29 @@ You can now run the CLI using:
 
 ```bash
 fair
+```
+
+## Verification & Testing
+
+Verify that your installation, test suite, and site generation pass:
+
+### 1. Run the Test Suite with Coverage
+```bash
+# Run pytest with code coverage breakdown
+pytest --cov=fairtool --cov-report=term-missing
+```
+
+### 2. Verify Code Quality with Ruff
+```bash
+# Check linting and formatting
+ruff check fairtool tests
+ruff format --check fairtool tests
+```
+
+### 3. Verify Static Documentation Build
+```bash
+# Test site build without launching dev server
+fair visualize tests/VASP/ --build
 ```
 
 ## Troubleshooting

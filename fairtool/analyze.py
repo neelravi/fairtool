@@ -6,8 +6,9 @@ import json
 import logging
 from pathlib import Path
 from typing import Optional
-import yaml # For config file
-import pandas as pd # Example: for creating summary tables
+
+import pandas as pd  # Example: for creating summary tables
+import yaml  # For config file
 
 # Optional: Import pymatgen or other analysis libraries
 # from pymatgen.core import Structure
@@ -15,6 +16,7 @@ import pandas as pd # Example: for creating summary tables
 # from pymatgen.electronic_structure.bandstructure import BandStructureSymmLine
 
 log = logging.getLogger("fairtool")
+
 
 def run_analysis(input_path: Path, output_dir: Path, config_path: Optional[Path]):
     """
@@ -29,7 +31,7 @@ def run_analysis(input_path: Path, output_dir: Path, config_path: Optional[Path]
     if config_path:
         log.info(f"Loading analysis configuration from: {config_path}")
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config = yaml.safe_load(f)
         except Exception as e:
             log.error(f"Failed to load config file {config_path}: {e}")
@@ -37,26 +39,26 @@ def run_analysis(input_path: Path, output_dir: Path, config_path: Optional[Path]
             # return
 
     # --- Find input files ---
-    if input_path.is_file() and input_path.suffix == '.json':
+    if input_path.is_file() and input_path.suffix == ".json":
         files_to_analyze = [input_path]
     elif input_path.is_dir():
         log.info(f"Searching for parsed JSON files (*_parsed.json) in: {input_path}")
         files_to_analyze = sorted(list(input_path.rglob("*_parsed.json")))
         if not files_to_analyze:
-             log.warning(f"No '*_parsed.json' files found in {input_path}")
-             return
+            log.warning(f"No '*_parsed.json' files found in {input_path}")
+            return
     else:
         log.error(f"Input path must be a JSON file or a directory containing them: {input_path}")
         return
 
     log.info(f"Found {len(files_to_analyze)} JSON file(s) to analyze.")
 
-    analysis_results = [] # Store results from each file if creating a summary
+    analysis_results = []  # Store results from each file if creating a summary
 
     for file in files_to_analyze:
         log.info(f"Analyzing data from: {file.name}")
         try:
-            with open(file, 'r') as f:
+            with open(file, "r") as f:
                 parsed_data = json.load(f)
 
             # --- Perform Analysis ---
@@ -74,7 +76,7 @@ def run_analysis(input_path: Path, output_dir: Path, config_path: Optional[Path]
             # Example: Save a small summary YAML for this specific file
             individual_output_path = output_dir / f"{file.stem}_analysis.yaml"
             log.debug(f"Saving individual analysis summary to {individual_output_path}")
-            with open(individual_output_path, 'w') as f:
+            with open(individual_output_path, "w") as f:
                 yaml.dump(result, f, default_flow_style=False)
 
         except json.JSONDecodeError:
@@ -128,7 +130,14 @@ def perform_single_file_analysis(data: dict, config: dict, identifier: str) -> d
     # Extract Band Gap (adjust path based on parser output structure)
     try:
         # Hypothetical path
-        band_gap = data.get("results", {}).get("properties", {}).get("electronic", {}).get("band_structure", {}).get("band_gap", [{}])[0].get("value")
+        band_gap = (
+            data.get("results", {})
+            .get("properties", {})
+            .get("electronic", {})
+            .get("band_structure", {})
+            .get("band_gap", [{}])[0]
+            .get("value")
+        )
         results["band_gap_eV"] = band_gap
     except (AttributeError, TypeError, KeyError, IndexError):
         log.debug(f"Could not extract band gap for {identifier}")
@@ -140,15 +149,15 @@ def perform_single_file_analysis(data: dict, config: dict, identifier: str) -> d
         converged = data.get("results", {}).get("workflow", [{}])[0].get("calculation_converged")
         results["converged"] = converged
     except (AttributeError, TypeError, KeyError, IndexError):
-         log.debug(f"Could not determine convergence status for {identifier}")
-         results["converged"] = None
-
+        log.debug(f"Could not determine convergence status for {identifier}")
+        results["converged"] = None
 
     # Add more analysis based on `config` if needed
     # if config.get("calculate_dos_features"):
     #     dos_features = calculate_dos(...)
     #     results.update(dos_features)
 
-    log.info(f"Analysis summary for {identifier}: Energy={results.get('total_energy_eV')}, Gap={results.get('band_gap_eV')}, Converged={results.get('converged')}")
+    log.info(
+        f"Analysis summary for {identifier}: Energy={results.get('total_energy_eV')}, Gap={results.get('band_gap_eV')}, Converged={results.get('converged')}"
+    )
     return results
-

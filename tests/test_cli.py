@@ -1,16 +1,18 @@
-import pytest
-from typer.testing import CliRunner
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
+import pytest
 import typer
+from typer.testing import CliRunner
 
 # Import the main Typer application from your cli.py
-from fairtool.cli import app, _find_calc_files
+from fairtool.cli import _find_calc_files, app
 
 # Initialize the CliRunner
 runner = CliRunner()
 
 # --- Fixtures for common test setup ---
+
 
 @pytest.fixture
 def mock_all_runners():
@@ -18,28 +20,30 @@ def mock_all_runners():
     Mocks all the 'run_...' functions in the logic modules to test
     the CLI layer in isolation.
     """
-    with patch('fairtool.cli.parse_module.run_parser') as mock_parse, \
-         patch('fairtool.cli.analyze_module.run_analysis') as mock_analyze, \
-         patch('fairtool.cli.summarize_module.run_summarization') as mock_summarize, \
-         patch('fairtool.cli.export_module.run_export') as mock_export, \
-         patch('fairtool.cli.visualize_module.run_visualization') as mock_visualize:
-        
+    with (
+        patch("fairtool.cli.parse_module.run_parser") as mock_parse,
+        patch("fairtool.cli.analyze_module.run_analysis") as mock_analyze,
+        patch("fairtool.cli.summarize_module.run_summarization") as mock_summarize,
+        patch("fairtool.cli.export_module.run_export") as mock_export,
+        patch("fairtool.cli.visualize_module.run_visualization") as mock_visualize,
+    ):
         # Make run_parser return False (not skipped)
-        mock_parse.return_value = False 
-        
+        mock_parse.return_value = False
+
         yield {
             "parse": mock_parse,
             "analyze": mock_analyze,
             "summarize": mock_summarize,
             "export": mock_export,
-            "visualize": mock_visualize
+            "visualize": mock_visualize,
         }
+
 
 @pytest.fixture
 def setup_test_files(tmp_path):
     """
     Create a standard file structure for testing file finding.
-    
+
     Structure:
     tmp_path/
     ├── vasprun.xml
@@ -60,6 +64,7 @@ def setup_test_files(tmp_path):
 
 # --- Existing Tests ---
 
+
 def test_version_command():
     """
     Test the --version/-v flag.
@@ -79,7 +84,7 @@ def test_author(capsys):
     """
     result = runner.invoke(app, ["about"], env={"TERM": "dumb"})
     assert result.exit_code == 0
-    print ("whole stdout", result.stdout)  # For debugging purposes
+    print("whole stdout", result.stdout)  # For debugging purposes
     assert "Dr. Ravindra Shinde" in result.stdout
 
     result = runner.invoke(app, ["about"], env={"TERM": "dumb"})
@@ -100,12 +105,14 @@ def test_author(capsys):
 
 # --- [NEW] Unit Tests for _find_calc_files Helper ---
 
+
 def test_find_calc_files_non_recursive(setup_test_files):
     """Test finding files only in the root directory."""
     files = _find_calc_files(setup_test_files, recursive=False, assume_yes=True)
     assert len(files) == 1
     assert files[0].name == "vasprun.xml"
     assert files[0].parent.name == setup_test_files.name
+
 
 def test_find_calc_files_recursive(setup_test_files):
     """Test finding files recursively."""
@@ -114,6 +121,7 @@ def test_find_calc_files_recursive(setup_test_files):
     # Check that we found both vasprun.xml files
     assert {f.parent.name for f in files} == {setup_test_files.name, "subdir"}
 
+
 def test_find_calc_files_on_file_input(setup_test_files):
     """Test giving a direct file path instead of a directory."""
     file_path = setup_test_files / "vasprun.xml"
@@ -121,11 +129,13 @@ def test_find_calc_files_on_file_input(setup_test_files):
     assert len(files) == 1
     assert files[0] == file_path
 
+
 def test_find_calc_files_no_files_found(setup_test_files):
     """Test searching a directory that contains no matching files."""
     (setup_test_files / "empty_dir").mkdir()
     files = _find_calc_files(setup_test_files / "empty_dir", recursive=True, assume_yes=True)
     assert len(files) == 0
+
 
 def test_find_calc_files_non_existent_path():
     """Test that a non-existent path raises a typer.Exit."""
@@ -135,6 +145,7 @@ def test_find_calc_files_non_existent_path():
 
 # --- [NEW] CLI Integration Tests ---
 
+
 def test_cli_parse_command_options(mock_all_runners, setup_test_files):
     """
     Test the `parse` command's options: -r, -f, -y, -o.
@@ -143,37 +154,25 @@ def test_cli_parse_command_options(mock_all_runners, setup_test_files):
     """
     test_dir = setup_test_files
     out_dir = setup_test_files / "output"
-    
-    result = runner.invoke(app, [
-        "parse",
-        str(test_dir),
-        "--recursive",
-        "--force",
-        "--yes",
-        "--output", str(out_dir)
-    ])
-    
+
+    result = runner.invoke(app, ["parse", str(test_dir), "--recursive", "--force", "--yes", "--output", str(out_dir)])
+
     assert result.exit_code == 0
-    
+
     # Check that parse_module.run_parser was called correctly
     mock_parse = mock_all_runners["parse"]
-    
+
     # It should be called 2 times (once for each file found)
     assert mock_parse.call_count == 2
-    
+
     # Check the call args.
     # call_args_list[0][0] is the (args,) tuple of the first call.
     # The args are (file_path, output_dir_path, force_flag)
-    expected_calls = [
-        (test_dir / "vasprun.xml", out_dir, True),
-        (test_dir / "subdir" / "vasprun.xml", out_dir, True)
-    ]
-    
+    expected_calls = [(test_dir / "vasprun.xml", out_dir, True), (test_dir / "subdir" / "vasprun.xml", out_dir, True)]
+
     # Convert mock calls to a simpler, comparable format
-    actual_calls = [
-        (call[0][0], call[0][1], call[0][2]) for call in mock_parse.call_args_list
-    ]
-    
+    actual_calls = [(call[0][0], call[0][1], call[0][2]) for call in mock_parse.call_args_list]
+
     # Use sets to be order-agnostic
     assert set(actual_calls) == set(expected_calls)
 
@@ -186,22 +185,18 @@ def test_cli_analyze_command(mock_all_runners, setup_test_files):
     out_dir = setup_test_files / "analysis_out"
     config_file = setup_test_files / "config.yml"
 
-    result = runner.invoke(app, [
-        "analyze",
-        str(json_file),
-        "--output", str(out_dir),
-        "--config", str(config_file)
-    ])
-    
+    result = runner.invoke(app, ["analyze", str(json_file), "--output", str(out_dir), "--config", str(config_file)])
+
     assert result.exit_code == 0
     mock_analyze = mock_all_runners["analyze"]
-    
+
     # Check that analyze_module.run_analysis was called with correct args
     mock_analyze.assert_called_once_with(
-        json_file, # Typer resolves this path
+        json_file,  # Typer resolves this path
         out_dir,
-        config_file
+        config_file,
     )
+
 
 def test_cli_all_command(mock_all_runners, setup_test_files):
     """
@@ -210,39 +205,35 @@ def test_cli_all_command(mock_all_runners, setup_test_files):
     """
     test_dir = setup_test_files
     out_dir = setup_test_files / "all_output"
-    
+
     # We mock the file-finding helpers to isolate the logic
     # of the 'all' command itself.
-    with patch('fairtool.cli._find_calc_files') as mock_find_calc, \
-         patch('fairtool.cli._find_json_files') as mock_find_json:
-        
+    with (
+        patch("fairtool.cli._find_calc_files") as mock_find_calc,
+        patch("fairtool.cli._find_json_files") as mock_find_json,
+    ):
         # Setup mock return values
         dummy_calc_file = setup_test_files / "vasprun.xml"
         dummy_json_file = out_dir / "fair_parsed_vasprun.json"
         mock_find_calc.return_value = [dummy_calc_file]
         mock_find_json.return_value = [dummy_json_file]
-        
-        result = runner.invoke(app, [
-            "all",
-            str(test_dir),
-            "-r", "-f", "-y",
-            "-o", str(out_dir),
-            "--format", "csv",
-            "--embed"
-        ])
-        
+
+        result = runner.invoke(
+            app, ["all", str(test_dir), "-r", "-f", "-y", "-o", str(out_dir), "--format", "csv", "--embed"]
+        )
+
         assert result.exit_code == 0
-        
+
         # Check that the 'all' command called all the backend
         # modules in the correct order with the correct arguments.
-        
+
         # 1. Parse
         mock_find_calc.assert_called_once_with(test_dir, recursive=True, assume_yes=True)
         mock_all_runners["parse"].assert_called_once_with(dummy_calc_file, out_dir, True)
-        
+
         # 2. Analyze
         mock_all_runners["analyze"].assert_called_once_with(out_dir, out_dir, None)
-        
+
         # 3. Summarize
         mock_find_json.assert_called_once_with(out_dir, recursive=True)
         mock_all_runners["summarize"].assert_called_once_with(dummy_json_file, out_dir, None)
@@ -252,3 +243,81 @@ def test_cli_all_command(mock_all_runners, setup_test_files):
 
         # 5. Visualize
         mock_all_runners["visualize"].assert_called_once_with(out_dir, out_dir, True)
+
+
+def test_cli_summarize_command(mock_all_runners, setup_test_files):
+    """Test the `summarize` command invoking summarize_module.run_summarization."""
+    json_file = setup_test_files / "fair_parsed_data.json"
+    out_dir = setup_test_files / "sum_out"
+
+    result = runner.invoke(app, ["summarize", str(json_file), "--output", str(out_dir), "--force"])
+    assert result.exit_code == 0
+    mock_summarize = mock_all_runners["summarize"]
+    mock_summarize.assert_called_once_with(json_file, out_dir, None)
+
+
+def test_cli_export_command(mock_all_runners, setup_test_files):
+    """Test the `export` command with custom format and output directory."""
+    input_file = setup_test_files / "fair_parsed_data.json"
+    out_dir = setup_test_files / "export_out"
+
+    result = runner.invoke(app, ["export", str(input_file), "--output", str(out_dir), "--format", "yaml"])
+    assert result.exit_code == 0
+    mock_export = mock_all_runners["export"]
+    mock_export.assert_called_once_with(input_file, out_dir, "yaml")
+
+
+def test_cli_visualize_command(mock_all_runners, setup_test_files):
+    """Test the `visualize` command without serve."""
+    input_dir = setup_test_files
+    out_dir = setup_test_files / "viz_out"
+
+    result = runner.invoke(app, ["visualize", str(input_dir), "--output", str(out_dir), "--embed", "--no-serve"])
+    assert result.exit_code == 0
+    mock_viz = mock_all_runners["visualize"]
+    mock_viz.assert_called_once_with(input_dir, out_dir, True)
+
+
+def test_cli_help():
+    """Test the top-level --help output."""
+    result = runner.invoke(app, ["--help"], env={"TERM": "dumb"})
+    assert result.exit_code == 0
+    assert "Usage:" in result.stdout
+    assert "parse" in result.stdout
+    assert "summarize" in result.stdout
+    assert "analyze" in result.stdout
+    assert "export" in result.stdout
+    assert "visualize" in result.stdout
+
+
+def test_cli_invalid_command():
+    """Test invoking a non-existent command exits with code 2."""
+    result = runner.invoke(app, ["nonexistent_command"], env={"TERM": "dumb"})
+    assert result.exit_code != 0
+
+
+def test_cli_analyze_error_handling(mock_all_runners, setup_test_files):
+    """Test analyze command catches backend exceptions and exits with code 1."""
+    mock_all_runners["analyze"].side_effect = RuntimeError("Analysis error")
+    json_file = setup_test_files / "fair_parsed_data.json"
+
+    result = runner.invoke(app, ["analyze", str(json_file)])
+    assert result.exit_code == 1
+
+
+def test_cli_export_error_handling(mock_all_runners, setup_test_files):
+    """Test export command catches backend exceptions and exits with code 1."""
+    mock_all_runners["export"].side_effect = RuntimeError("Export error")
+    json_file = setup_test_files / "fair_parsed_data.json"
+
+    result = runner.invoke(app, ["export", str(json_file)])
+    assert result.exit_code == 1
+
+
+def test_cli_visualize_error_handling(mock_all_runners, setup_test_files):
+    """Test visualize command catches backend exceptions and exits with code 1."""
+    mock_all_runners["visualize"].side_effect = RuntimeError("Viz error")
+    json_file = setup_test_files / "fair_parsed_data.json"
+
+    result = runner.invoke(app, ["visualize", str(json_file), "--no-serve"])
+    assert result.exit_code == 1

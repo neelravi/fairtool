@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software in your research, please cite it as below."
+title: "fairtool: A CLI tool for FAIR processing of computational materials science data"
+authors:
+  - family-names: "Shinde"
+    given-names: "Ravindra"
+    email: "r.l.shinde@utwente.nl"
+    affiliation: "University of Twente / 4TU.ResearchData"
+    orcid: "https://orcid.org/0000-0001-5182-1480"
+version: 0.2.1
+date-released: 2025-01-01
+url: "https://github.com/neelravi/fairtool"
+repository-code: "https://github.com/neelravi/fairtool"
+license: MIT
+keywords:
+  - "FAIR data"
+  - "computational materials science"
+  - "VASP"
+  - "density functional theory"
+  - "research software engineering"

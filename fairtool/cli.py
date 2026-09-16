@@ -1,21 +1,24 @@
 """Main CLI entry point for the FAIR tool."""
-import os
-import typer
-from typing_extensions import Annotated
+
+import logging
+import sys
 from pathlib import Path
 from typing import Optional
-import logging
+
 import rich
+import typer
 from rich.console import Console
-import sys
 from rich.logging import RichHandler
+from typing_extensions import Annotated
+
+from . import __version__
+from . import analyze as analyze_module
+from . import export as export_module
+
 # Import subcommand functions
 from . import parse as parse_module
-from . import analyze as analyze_module
 from . import summarize as summarize_module
 from . import visualize as visualize_module
-from . import export as export_module
-from . import __version__
 
 console = Console()
 
@@ -24,7 +27,15 @@ logging.basicConfig(
     level="INFO",
     format="%(message)s",
     datefmt="[%X]",
-    handlers=[RichHandler(show_path=False, rich_tracebacks=True, markup=True, keywords=["error", "failed", "success", "warning"], tracebacks_suppress=[typer])]
+    handlers=[
+        RichHandler(
+            show_path=False,
+            rich_tracebacks=True,
+            markup=True,
+            keywords=["error", "failed", "success", "warning"],
+            tracebacks_suppress=[typer],
+        )
+    ],
 )
 log = logging.getLogger("fairtool")
 
@@ -36,8 +47,9 @@ app = typer.Typer(
     no_args_is_help=True,
     callback=None,
     suggest_commands=True,
-    rich_markup_mode="rich"
+    rich_markup_mode="rich",
 )
+
 
 # --- Typer Command Definitions ---
 @app.command(rich_help_panel="Information and Help", epilog="Made with :heart: in [blue]The Netherlands[/blue]")
@@ -49,7 +61,8 @@ def about():
     console.print("")
     console.rule()
     console.print("FAIR Tool - Computational Materials Data made FAIR", style="bold magenta")
-    console.print(r"""
+    console.print(
+        r"""
   █████▒ ▄▄▄       ██▓ ██▀███  ▄▄▄█████▓ ▒█████   ▒█████   ██▓
 ▓██   ▒ ▒████▄    ▓██▒▓██ ▒ ██▒▓  ██▒ ▓▒▒██▒  ██▒▒██▒  ██▒▓██▒
 ▒████ ░ ▒██  ▀█▄  ▒██▒▓██ ░▄█ ▒▒ ▓██░ ▒░▒██░  ██▒▒██░  ██▒▒██░
@@ -59,10 +72,20 @@ def about():
  ░        ▒   ▒▒ ░ ▒ ░  ░▒ ░ ▒░    ░      ░ ▒ ▒░   ░ ▒ ▒░ ░ ░ ▒  ░
  ░ ░      ░   ▒    ▒ ░  ░░   ░   ░      ░ ░ ░ ▒  ░ ░ ░ ▒    ░ ░
               ░  ░ ░     ░                  ░ ░      ░ ░      ░  ░
-    """, style="dark_orange")
-    console.print("FAIR Tool is a command-line interface for processing, analyzing, and visualizing computational materials data.", style="cyan")
-    console.print("It is designed to work with various calculation output files and provides a streamlined workflow.", style="cyan")
-    console.print("The tool is built on top of electronic-parsers and other libraries to facilitate data handling.", style="cyan")
+    """,
+        style="dark_orange",
+    )
+    console.print(
+        "FAIR Tool is a command-line interface for processing, analyzing, and visualizing computational materials data.",
+        style="cyan",
+    )
+    console.print(
+        "It is designed to work with various calculation output files and provides a streamlined workflow.",
+        style="cyan",
+    )
+    console.print(
+        "The tool is built on top of electronic-parsers and other libraries to facilitate data handling.", style="cyan"
+    )
     console.print("")
     console.print("Version: " + str(__version__), style="orange1")
     console.print("")
@@ -78,8 +101,8 @@ def about():
     console.print("")
 
 
-
 # --- Helper Functions ---
+
 
 def _find_calc_files(path: Path, recursive: bool = True, assume_yes: bool = False) -> list[Path]:
     """
@@ -111,23 +134,19 @@ def _find_calc_files(path: Path, recursive: bool = True, assume_yes: bool = Fals
 
     elif path.is_dir():
         search_method = path.rglob if recursive else path.glob
-        potential_files = (
-            list(search_method("vasprun.xml")) +
-            list(search_method("*vasprun.xml"))
-        )
+        potential_files = list(search_method("vasprun.xml")) + list(search_method("*vasprun.xml"))
 
         # Filter out any files we might have double-counted (e.g., vasprun.xml is also *.xml)
         potential_files = sorted(list(set(potential_files)))
 
-
         if not potential_files:
-             log.warning(f"No potential calculation files (e.g., vasprun.xml) found in {path}")
+            log.warning(f"No potential calculation files (e.g., vasprun.xml) found in {path}")
         else:
             log.info(f"Found {len(potential_files)} potential calculation files.")
-            
+
             unique_dirs = sorted(set(f.parent for f in potential_files))
             log.info("\n Detected directories with calculation files:")
-            
+
             for d in unique_dirs:
                 log.info(f" - {d}")
                 for f in potential_files:
@@ -141,17 +160,18 @@ def _find_calc_files(path: Path, recursive: bool = True, assume_yes: bool = Fals
                 elif not typer.confirm(f"Proceed to process all {len(potential_files)} file(s)? :: "):
                     log.info("Aborting file processing as per user request.")
                     raise typer.Exit(code=0)
-        
+
             files_to_process.extend(potential_files)
-        
+
     else:
         log.error(f"Error: Input path is neither a file nor a directory: {path}")
         raise typer.Exit(code=1)
 
     if not files_to_process:
-         log.warning(f"No files identified for processing at path: {path}")
+        log.warning(f"No files identified for processing at path: {path}")
 
     return files_to_process
+
 
 def _find_json_files(path: Path, recursive: bool = True) -> list[Path]:
     """
@@ -174,17 +194,17 @@ def _find_json_files(path: Path, recursive: bool = True) -> list[Path]:
             files_to_process.append(path)
         else:
             log.warning(f"Input file {path} is not a 'fair_parsed_*.json' file. Skipping.")
-    
+
     elif path.is_dir():
         search_method = path.rglob if recursive else path.glob
         potential_files = list(search_method("fair_parsed_*.json"))
-        
+
         if not potential_files:
             log.warning(f"No 'fair_parsed_*.json' files found in {path}")
         else:
             log.info(f"Found {len(potential_files)} parsed JSON files for processing.")
             files_to_process.extend(sorted(potential_files))
-    
+
     return files_to_process
 
 
@@ -195,38 +215,36 @@ def version_callback(value: bool):
         raise typer.Exit()
 
 
-
 @app.command(rich_help_panel="Processing")
 def parse(
-    input_path: Annotated[Path, typer.Argument(
-        help="Path to a calculation file or directory to search.",
-        exists=True,
-        file_okay=True,
-        dir_okay=True,
-        resolve_path=True,
-    )] = Path.cwd(), # Default to current working directory
-
-    recursive: Annotated[bool, typer.Option(
-        "--recursive", "-r",
-        help="Search and parse files recursively through subdirectories."
-    )] = False,
-
-    output_dir: Annotated[Optional[Path], typer.Option(
-        "--output", "-o",
-        help="Directory to save parsed JSON files. "
-             "If not given, files are saved next to their originals.",
-        resolve_path=True,
-    )] = None,
-
-    force: Annotated[bool, typer.Option(
-        "--force", "-f",
-        help="Overwrite existing output files."
-    )] = False, # Default changed to False
-
-    yes: Annotated[bool, typer.Option(
-        "--yes", "-y",
-        help="Assume yes for all interactive prompts (non-interactive/batch mode)."
-    )] = False,
+    input_path: Annotated[
+        Path,
+        typer.Argument(
+            help="Path to a calculation file or directory to search.",
+            exists=True,
+            file_okay=True,
+            dir_okay=True,
+            resolve_path=True,
+        ),
+    ] = Path.cwd(),  # Default to current working directory
+    recursive: Annotated[
+        bool, typer.Option("--recursive", "-r", help="Search and parse files recursively through subdirectories.")
+    ] = False,
+    output_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--output",
+            "-o",
+            help="Directory to save parsed JSON files. If not given, files are saved next to their originals.",
+            resolve_path=True,
+        ),
+    ] = None,
+    force: Annotated[
+        bool, typer.Option("--force", "-f", help="Overwrite existing output files.")
+    ] = False,  # Default changed to False
+    yes: Annotated[
+        bool, typer.Option("--yes", "-y", help="Assume yes for all interactive prompts (non-interactive/batch mode).")
+    ] = False,
 ):
     """
     Parse calculation output files (e.g., vasprun.xml) into structured JSON.
@@ -237,7 +255,7 @@ def parse(
     files_to_process = _find_calc_files(input_path, recursive=recursive, assume_yes=yes)
     if not files_to_process:
         log.warning("No files found to parse.")
-        return # Exit gracefully
+        return  # Exit gracefully
 
     count_success = 0
     count_fail = 0
@@ -248,22 +266,22 @@ def parse(
             # If no --output given, use file’s directory
             target_dir = output_dir if output_dir else file.parent
             target_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # The logic to check for existing files and mtime is now
             # handled *inside* parse_module.run_parser.
             # We call it directly.
-            
+
             log.info(f"Parsing file: {file}")
             # run_parser will return True if skipped, False if parsed/failed
             skipped = parse_module.run_parser(file, target_dir, force)
-            
+
             if skipped:
                 count_skip += 1
             else:
                 count_success += 1
-                
+
         except Exception as e:
-            log.error(f"Failed to parse {file}: {e}", exc_info=False) # exc_info=False to reduce noise, parser logs it
+            log.error(f"Failed to parse {file}: {e}", exc_info=False)  # exc_info=False to reduce noise, parser logs it
             count_fail += 1
 
     log.info("--- Parsing Finished ---")
@@ -274,26 +292,37 @@ def parse(
 
 @app.command(rich_help_panel="Processing")
 def analyze(
-    input_path: Annotated[Path, typer.Argument(
-        help="Path to a parsed JSON file or a directory containing them (usually from 'fair parse').",
-        exists=True,
-        file_okay=True,
-        dir_okay=True,
-        resolve_path=True,
-    )],
-     output_dir: Annotated[Path, typer.Option(
-        "--output", "-o",
-        help="Directory to save analysis results (e.g., plots, summary tables).",
-        resolve_path=True,
-    )] = Path("."),
-     config: Annotated[Path, typer.Option(
-        "--config", "-c",
-        help="Path to an optional analysis configuration file (e.g., YAML).",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        resolve_path=True,
-    )] = None,
+    input_path: Annotated[
+        Path,
+        typer.Argument(
+            help="Path to a parsed JSON file or a directory containing them (usually from 'fair parse').",
+            exists=True,
+            file_okay=True,
+            dir_okay=True,
+            resolve_path=True,
+        ),
+    ],
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Directory to save analysis results (e.g., plots, summary tables).",
+            resolve_path=True,
+        ),
+    ] = Path("."),
+    config: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            "-c",
+            help="Path to an optional analysis configuration file (e.g., YAML).",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            resolve_path=True,
+        ),
+    ] = None,
 ):
     """
     Perform analysis on parsed calculation data. Get derived properties.
@@ -308,7 +337,7 @@ def analyze(
     # Similar to _find_calc_files but looking for *.json or specific names
     # For now, we assume run_analysis can handle a directory.
     # json_files = _find_json_files(input_path, recursive=True) # If run_analysis can't handle dirs
-    
+
     try:
         log.info("Analysis started.")
         # We assume run_analysis can handle a directory input_path
@@ -322,31 +351,35 @@ def analyze(
 
 @app.command(rich_help_panel="Processing")
 def summarize(
-    input_path: Annotated[Path, typer.Argument(
-        help="Path to parsed 'fair_parsed_*.json' data (file or directory).",
-         exists=True,
-        file_okay=True,
-        dir_okay=True,
-        resolve_path=True,
-    )],
-    output_dir: Annotated[Path, typer.Option(
-        "--output", "-o",
-        help="Directory to save summary files (e.g., Markdown reports). "
-             "If not given, files are saved next to their JSON files.",
-        resolve_path=True,
-    )] = None,
-    recursive: Annotated[bool, typer.Option(
-        "--recursive", "-r",
-        help="Search recursively for JSON files if input_path is a directory."
-    )] = True,
-    template: Annotated[str, typer.Option(
-        "--template", "-t",
-        help="Optional template for generating the summary report."
-    )] = None,
-    force: Annotated[bool, typer.Option(
-        "--force", "-f",
-        help="Overwrite existing summary files."
-    )] = False, # Added force option
+    input_path: Annotated[
+        Path,
+        typer.Argument(
+            help="Path to parsed 'fair_parsed_*.json' data (file or directory).",
+            exists=True,
+            file_okay=True,
+            dir_okay=True,
+            resolve_path=True,
+        ),
+    ],
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Directory to save summary files (e.g., Markdown reports). "
+            "If not given, files are saved next to their JSON files.",
+            resolve_path=True,
+        ),
+    ] = None,
+    recursive: Annotated[
+        bool, typer.Option("--recursive", "-r", help="Search recursively for JSON files if input_path is a directory.")
+    ] = True,
+    template: Annotated[
+        str, typer.Option("--template", "-t", help="Optional template for generating the summary report.")
+    ] = None,
+    force: Annotated[
+        bool, typer.Option("--force", "-f", help="Overwrite existing summary files.")
+    ] = False,  # Added force option
 ):
     """
     Generate human-readable summaries from parsed data.
@@ -361,7 +394,7 @@ def summarize(
         return
 
     log.info(f"Found {len(json_files)} JSON files to summarize.")
-    
+
     count_success = 0
     count_fail = 0
     count_skip = 0
@@ -371,9 +404,9 @@ def summarize(
             # If no --output given, use JSON file's directory
             target_dir = output_dir if output_dir else json_file.parent
             target_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # --- Prepare output path ---
-            base_name = json_file.stem # e.g., "fair_parsed_my_calc"
+            base_name = json_file.stem  # e.g., "fair_parsed_my_calc"
             summary_base_name = base_name.replace("fair_parsed_", "fair_summarized_")
             md_output_path = target_dir / f"{summary_base_name}.md"
 
@@ -398,22 +431,33 @@ def summarize(
 
 @app.command(rich_help_panel="Processing")
 def export(
-    input_path: Annotated[Path, typer.Argument(
-        help="Path to parsed/analyzed data (JSON/directory) to export.",
-         exists=True,
-        file_okay=True,
-        dir_okay=True,
-        resolve_path=True,
-    )],
-    output_dir: Annotated[Path, typer.Option(
-        "--output", "-o",
-        help="Directory to save exported files.",
-        resolve_path=True,
-    )] = Path("."),
-    format: Annotated[str, typer.Option(
-        "--format", "-fmt",
-        help="Export format (e.g., 'csv', 'json_summary', 'yaml').",
-    )] = "csv",
+    input_path: Annotated[
+        Path,
+        typer.Argument(
+            help="Path to parsed/analyzed data (JSON/directory) to export.",
+            exists=True,
+            file_okay=True,
+            dir_okay=True,
+            resolve_path=True,
+        ),
+    ],
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Directory to save exported files.",
+            resolve_path=True,
+        ),
+    ] = Path("."),
+    format: Annotated[
+        str,
+        typer.Option(
+            "--format",
+            "-fmt",
+            help="Export format (e.g., 'csv', 'json_summary', 'yaml').",
+        ),
+    ] = "csv",
 ):
     """
     Export processed data into different file formats.
@@ -437,34 +481,55 @@ def export(
 
 @app.command(rich_help_panel="Processing")
 def visualize(
-    input_path: Annotated[Path, typer.Argument(
-        help="Path to parsed data (Markdown/directory) containing structures, and other summary data.",
-         exists=True,
-        file_okay=True,
-        dir_okay=True,
-        resolve_path=True,
-    )],
-    output_dir: Annotated[Path, typer.Option(
-        "--output", "-o",
-        help="Directory to save visualization data (e.g., JSON for React components) and potentially Markdown snippets.",
-        resolve_path=True,
-    )] = Path("."),
-    embed: Annotated[bool, typer.Option(
-        "--embed", "-e",
-        help="Generate Markdown snippets for embedding visualizations in mkdocs.",
-    )] = False,
-    serve: Annotated[bool, typer.Option(
-        "--serve/--no-serve",
-        help="Launch an localhost dev server to view the generated Markdown/embedded visualizations.",
-    )] = True,
-    build: Annotated[bool, typer.Option(
-        "--build",
-        help="Build the website locally and output the static site to ./site.",
-    )] = False,
-    port: Annotated[int, typer.Option(
-        "--port", "-p",
-        help="Port number for localhost dev server when using --serve.",
-    )] = 8000,
+    input_path: Annotated[
+        Path,
+        typer.Argument(
+            help="Path to parsed data (Markdown/directory) containing structures, and other summary data.",
+            exists=True,
+            file_okay=True,
+            dir_okay=True,
+            resolve_path=True,
+        ),
+    ],
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Directory to save visualization data (e.g., JSON for React components) and potentially Markdown snippets.",
+            resolve_path=True,
+        ),
+    ] = Path("."),
+    embed: Annotated[
+        bool,
+        typer.Option(
+            "--embed",
+            "-e",
+            help="Generate Markdown snippets for embedding visualizations in mkdocs.",
+        ),
+    ] = False,
+    serve: Annotated[
+        bool,
+        typer.Option(
+            "--serve/--no-serve",
+            help="Launch an localhost dev server to view the generated Markdown/embedded visualizations.",
+        ),
+    ] = True,
+    build: Annotated[
+        bool,
+        typer.Option(
+            "--build",
+            help="Build the website locally and output the static site to ./site.",
+        ),
+    ] = False,
+    port: Annotated[
+        int,
+        typer.Option(
+            "--port",
+            "-p",
+            help="Port number for localhost dev server when using --serve.",
+        ),
+    ] = 8000,
 ):
     """
     Generate a complete visualization of the processed data (metadata, structures, BZ, DOS, bands)
@@ -491,7 +556,7 @@ def visualize(
     # both `--build --serve` explicitly.
     if build:
         try:
-            build_dir = Path('site')
+            build_dir = Path("site")
             build_dir.mkdir(parents=True, exist_ok=True)
             log.info("Building site into: %s", build_dir)
             visualize_module.serve_docs(input_path, port=port, dry_run=False, build=True, build_dir=build_dir)
@@ -513,50 +578,75 @@ def visualize(
 
 @app.command(rich_help_panel="Automated Workflow")
 def all(
-    input_path: Annotated[Path, typer.Argument(
-        help="Path to a calculation file or directory to process.",
-        exists=True,
-        file_okay=True,
-        dir_okay=True,
-        resolve_path=True,
-    )] = Path.cwd(), # Default to current working directory
-    output_dir: Annotated[Path, typer.Option(
-        "--output", "-o",
-        help="Directory to save all generated outputs.",
-        resolve_path=True,
-    )] = Path("./"), 
-    recursive: Annotated[bool, typer.Option(
-        "--recursive", "-r",
-        help="Search recursively for input calculation files."
-    )] = False,
-    force: Annotated[bool, typer.Option(
-        "--force", "-f",
-        help="Force re-generation of outputs (passed to parse and summarize).",
-    )] = False, 
-    yes: Annotated[bool, typer.Option(
-        "--yes", "-y",
-        help="Assume yes for all interactive prompts (non-interactive/batch mode)."
-    )] = False,
-    config: Annotated[Path, typer.Option(
-        "--config", "-c",
-        help="Optional analysis configuration file (passed to analyze).",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        resolve_path=True,
-    )] = None,
-    template: Annotated[str, typer.Option(
-        "--template", "-t",
-        help="Optional summary template (passed to summarize).",
-    )] = None,
-    export_format: Annotated[str, typer.Option(
-        "--format", "-fmt",
-        help="Export format for the export step (e.g., csv, yaml, json_summary).",
-    )] = "csv",
-    embed: Annotated[bool, typer.Option(
-        "--embed", "-e",
-        help="Generate Markdown embedding snippets during visualization.",
-    )] = False,
+    input_path: Annotated[
+        Path,
+        typer.Argument(
+            help="Path to a calculation file or directory to process.",
+            exists=True,
+            file_okay=True,
+            dir_okay=True,
+            resolve_path=True,
+        ),
+    ] = Path.cwd(),  # Default to current working directory
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Directory to save all generated outputs.",
+            resolve_path=True,
+        ),
+    ] = Path("./"),
+    recursive: Annotated[
+        bool, typer.Option("--recursive", "-r", help="Search recursively for input calculation files.")
+    ] = False,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            "-f",
+            help="Force re-generation of outputs (passed to parse and summarize).",
+        ),
+    ] = False,
+    yes: Annotated[
+        bool, typer.Option("--yes", "-y", help="Assume yes for all interactive prompts (non-interactive/batch mode).")
+    ] = False,
+    config: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            "-c",
+            help="Optional analysis configuration file (passed to analyze).",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            resolve_path=True,
+        ),
+    ] = None,
+    template: Annotated[
+        str,
+        typer.Option(
+            "--template",
+            "-t",
+            help="Optional summary template (passed to summarize).",
+        ),
+    ] = None,
+    export_format: Annotated[
+        str,
+        typer.Option(
+            "--format",
+            "-fmt",
+            help="Export format for the export step (e.g., csv, yaml, json_summary).",
+        ),
+    ] = "csv",
+    embed: Annotated[
+        bool,
+        typer.Option(
+            "--embed",
+            "-e",
+            help="Generate Markdown embedding snippets during visualization.",
+        ),
+    ] = False,
 ):
     """
     Run the full FAIR workflow: parse -> analyze -> summarize -> export -> visualize.
@@ -568,7 +658,7 @@ def all(
 
     # --- Step 1: Parse ---
     log.info("--- STEP 1/5: Parse ---")
-    
+
     # This logic is duplicated from the 'parse' command to ensure
     # the 'all' command correctly finds and processes files.
     files_to_process = _find_calc_files(input_path, recursive=recursive, assume_yes=yes)
@@ -587,16 +677,15 @@ def all(
         except Exception as e:
             log.error(f"Failed to parse {file}: {e}", exc_info=False)
             parse_fail += 1
-    
+
     if parse_success == 0:
         log.error("No files were successfully parsed. Aborting workflow.")
         raise typer.Exit(code=1)
     log.info(f"Parsing complete. Success: {parse_success}, Failed: {parse_fail}")
 
-
     # Subsequent steps operate on the output_dir
     # We pass 'output_dir' as the 'input_path' for all subsequent steps.
-    
+
     # --- Step 2: Analyze ---
     try:
         log.info("--- STEP 2/5: Analyze ---")
@@ -619,11 +708,11 @@ def all(
                 try:
                     summary_base_name = json_file.stem.replace("fair_parsed_", "fair_summarized_")
                     md_output_path = output_dir / f"{summary_base_name}.md"
-                    
+
                     if not force and md_output_path.exists():
                         log.info(f"Skipping summary for {json_file.name}; output exists.")
                         continue
-                        
+
                     summarize_module.run_summarization(json_file, output_dir, template)
                 except Exception as e:
                     log.error(f"Summarization failed for {json_file.name}: {e}", exc_info=False)
@@ -651,6 +740,7 @@ def all(
 
 
 # --- Version Callback ---
+
 
 @app.callback()
 def main_callback(

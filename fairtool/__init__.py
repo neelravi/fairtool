@@ -10,4 +10,3 @@ __version__ = "0.1.0"
 # from .parse import parse_calculation
 # from .analyze import analyze_data
 # ... etc.
-

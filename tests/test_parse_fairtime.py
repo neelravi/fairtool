@@ -1,14 +1,13 @@
 import json
 import time
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
 # Import the app for CLI runner tests
 # Import parse_cmd (the typer command) and _find_calc_files from cli
 # Import run_parser from parse
-from fairtool.cli import app, parse as parse_cmd, _find_calc_files
+from fairtool.cli import parse as parse_cmd
 from fairtool.parse import run_parser
 
 runner = CliRunner()
@@ -39,45 +38,42 @@ def test_run_parser_writes_fair_parse_time_and_filters(tmp_path, monkeypatch):
     output_dir.mkdir()
 
     # This mock represents the *merged* object after the `while` loop
-    fake_nomad_json = json.dumps({
-        # --- Keys from the *first* JSON (metadata) ---
-        "entry_name": "Test Entry",
-        "entry_type": "Test Type",
-        "domain": "dft",
-        "optimade": {"elements": ["Ag", "Cl", "Cs", "Hg"]},
-        "n_quantities": 42,
-        "quantities": ["some_quantity"],
-        "sections": ["some_section"],
-        "section_defs": ["some_def"],
-
-        # --- Keys from the *second* JSON (archive) ---
-        "run": [
-            {
-                "program": {"name": "VASP", "version": "6.3.0"},
-                "system": [
-                     {"atoms": {
-                        "lattice_vectors": [
-                            [5.0e-10, 0, 0], [0, 5.0e-10, 0], [0, 0, 5.0e-10]
-                        ],
-                        "positions": [
-                            [0, 0, 0]
-                        ],
-                        "labels": ["X"]
-                    }}
-                ],
-                "calculation": [
-                    {"energy": {"total": {"value": -4.8e-18}}}
-                ]
-            }
-        ],
-        "metadata": {
-            "entry_name": "Test Entry", # This gets overwritten
+    fake_nomad_json = json.dumps(
+        {
+            # --- Keys from the *first* JSON (metadata) ---
+            "entry_name": "Test Entry",
             "entry_type": "Test Type",
-        },
-        "results": {
-             "material": {"topology": []} # Added for structure gen
+            "domain": "dft",
+            "optimade": {"elements": ["Ag", "Cl", "Cs", "Hg"]},
+            "n_quantities": 42,
+            "quantities": ["some_quantity"],
+            "sections": ["some_section"],
+            "section_defs": ["some_def"],
+            # --- Keys from the *second* JSON (archive) ---
+            "run": [
+                {
+                    "program": {"name": "VASP", "version": "6.3.0"},
+                    "system": [
+                        {
+                            "atoms": {
+                                "lattice_vectors": [[5.0e-10, 0, 0], [0, 5.0e-10, 0], [0, 0, 5.0e-10]],
+                                "positions": [[0, 0, 0]],
+                                "labels": ["X"],
+                            }
+                        }
+                    ],
+                    "calculation": [{"energy": {"total": {"value": -4.8e-18}}}],
+                }
+            ],
+            "metadata": {
+                "entry_name": "Test Entry",  # This gets overwritten
+                "entry_type": "Test Type",
+            },
+            "results": {
+                "material": {"topology": []}  # Added for structure gen
+            },
         }
-    })
+    )
 
     fake_proc = make_nomad_process(fake_nomad_json)
     monkeypatch.setattr("subprocess.run", lambda *a, **k: fake_proc)
@@ -94,7 +90,7 @@ def test_run_parser_writes_fair_parse_time_and_filters(tmp_path, monkeypatch):
     json_file = output_dir / f"fair_parsed_{input_file.stem}.json"
     assert json_file.exists()
 
-    data = json.loads(json_file.read_text(encoding='utf-8'))
+    data = json.loads(json_file.read_text(encoding="utf-8"))
     assert "metadata" in data
     assert "fair_parse_time" in data["metadata"]
     # Check that a key from the archive metadata is still there
@@ -111,7 +107,7 @@ def test_run_parser_writes_fair_parse_time_and_filters(tmp_path, monkeypatch):
 
 
 # --- [FIXED TEST] Logic is now in run_parser ---
-@patch("subprocess.run") # We don't want subprocess to run at all
+@patch("subprocess.run")  # We don't want subprocess to run at all
 def test_run_parser_skips_when_unchanged(mock_subprocess_run, tmp_path):
     """
     Tests that run_parser (the core function) *itself*
@@ -121,7 +117,7 @@ def test_run_parser_skips_when_unchanged(mock_subprocess_run, tmp_path):
     input_file = tmp_path / "vasprun2.xml"
     input_file.write_text("content")
     file_mtime = input_file.stat().st_mtime
-    
+
     output_dir = tmp_path / "out2"
     output_dir.mkdir()
 
@@ -129,20 +125,20 @@ def test_run_parser_skips_when_unchanged(mock_subprocess_run, tmp_path):
     json_file = output_dir / f"fair_parsed_{input_file.stem}.json"
     # Save a parse time that is *newer* than the file
     json_content = {"metadata": {"fair_parse_time": file_mtime + 10}}
-    json_file.write_text(json.dumps(json_content), encoding='utf-8')
+    json_file.write_text(json.dumps(json_content), encoding="utf-8")
 
     # Call run_parser directly, with force=False
     skipped = run_parser(input_file, output_dir, force=False)
 
     # --- [FIX] Assert that run_parser *returned True* (indicating a skip) ---
     assert skipped
-    
+
     # And double-check it didn't try to run nomad
     mock_subprocess_run.assert_not_called()
 
 
 # --- [FIXED TEST] Logic is in run_parser, and CLI args changed ---
-@patch('fairtool.cli.parse_module.run_parser') # [FIX] Patch the *correct path*
+@patch("fairtool.cli.parse_module.run_parser")  # [FIX] Patch the *correct path*
 def test_cli_calls_parser_when_missing_fair_parse_time(mock_run_parser, tmp_path):
     """
     Tests that the `parse` command (parse_cmd) correctly
@@ -159,20 +155,19 @@ def test_cli_calls_parser_when_missing_fair_parse_time(mock_run_parser, tmp_path
     # Create an existing parsed JSON *without* fair_parse_time
     json_file = output_dir / f"fair_parsed_{input_file.stem}.json"
     json_content = {"metadata": {"some": "value"}}
-    json_file.write_text(json.dumps(json_content), encoding='utf-8')
+    json_file.write_text(json.dumps(json_content), encoding="utf-8")
 
     # --- [FIX] Call parse_cmd with the new 'recursive' argument ---
     # The signature is: parse(input_path, recursive, output_dir, force, yes)
     parse_cmd(
         input_path=input_file,
-        recursive=False, # Explicitly pass the new arg
+        recursive=False,  # Explicitly pass the new arg
         output_dir=output_dir,
-        force=False, # This is the default
-        yes=False    # This is the default
+        force=False,  # This is the default
+        yes=False,  # This is the default
     )
-    
+
     # The CLI's job is just to find files and call the parser.
     # The skip logic is inside run_parser, so the CLI *will* call it.
     # The `force` arg (False) is passed from the CLI to run_parser.
     mock_run_parser.assert_called_once_with(input_file, output_dir, False)
-

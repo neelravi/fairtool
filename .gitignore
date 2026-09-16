@@ -20,3 +20,8 @@ ENV/
 .vscode/
 venv*/
 .venv*/
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.ruff_cache/
