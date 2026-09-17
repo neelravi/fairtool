@@ -138,3 +138,49 @@ def test_run_analysis_invalid_input_path(tmp_path):
 
     run_analysis(text_file, out_dir, None)
     assert not (out_dir / "analysis_summary.csv").exists()
+
+
+def test_run_analysis_bad_config_file(tmp_path, sample_parsed_data):
+    """Test run_analysis when config file fails to load."""
+    json_file = tmp_path / "vasp_parsed.json"
+    json_file.write_text(json.dumps(sample_parsed_data), encoding="utf-8")
+    bad_config = tmp_path / "bad_config.yaml"
+    bad_config.write_text(":\n  - invalid yaml : {", encoding="utf-8")
+    out_dir = tmp_path / "output"
+    out_dir.mkdir()
+
+    # Should log error and proceed without crashing
+    run_analysis(json_file, out_dir, bad_config)
+    assert (out_dir / "vasp_parsed_analysis.yaml").exists()
+
+
+def test_run_analysis_single_file_exception(tmp_path, sample_parsed_data, monkeypatch):
+    """Test run_analysis when perform_single_file_analysis raises an exception."""
+    json_file = tmp_path / "vasp_parsed.json"
+    json_file.write_text(json.dumps(sample_parsed_data), encoding="utf-8")
+    out_dir = tmp_path / "output"
+    out_dir.mkdir()
+
+    import fairtool.analyze
+
+    def mock_perform(*args, **kwargs):
+        raise RuntimeError("Unexpected failure in analysis")
+
+    monkeypatch.setattr(fairtool.analyze, "perform_single_file_analysis", mock_perform)
+    run_analysis(json_file, out_dir, None)
+    assert not (out_dir / "vasp_parsed_analysis.yaml").exists()
+
+
+def test_run_analysis_aggregate_save_failure(tmp_path, sample_parsed_data, monkeypatch):
+    """Test run_analysis when saving aggregate CSV fails."""
+    json_file = tmp_path / "vasp_parsed.json"
+    json_file.write_text(json.dumps(sample_parsed_data), encoding="utf-8")
+    out_dir = tmp_path / "output"
+    out_dir.mkdir()
+
+    def mock_to_csv(self, *args, **kwargs):
+        raise IOError("Disk full or permission denied")
+
+    monkeypatch.setattr(pd.DataFrame, "to_csv", mock_to_csv)
+    run_analysis(json_file, out_dir, None)
+    assert (out_dir / "vasp_parsed_analysis.yaml").exists()

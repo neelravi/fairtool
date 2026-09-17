@@ -1,5 +1,5 @@
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import typer
@@ -321,3 +321,222 @@ def test_cli_visualize_error_handling(mock_all_runners, setup_test_files):
 
     result = runner.invoke(app, ["visualize", str(json_file), "--no-serve"])
     assert result.exit_code == 1
+
+
+def test_find_calc_files_interactive_abort_single_file(tmp_path, monkeypatch):
+    """Test _find_calc_files interactive abortion when user says no for single file."""
+    calc_file = tmp_path / "vasprun.xml"
+    calc_file.write_text("content", encoding="utf-8")
+
+    import sys
+
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(typer, "confirm", lambda prompt: False)
+
+    with pytest.raises(typer.Exit) as exc:
+        _find_calc_files(calc_file, assume_yes=False)
+    assert exc.value.exit_code == 0
+
+
+def test_find_calc_files_interactive_abort_dir(tmp_path, monkeypatch):
+    """Test _find_calc_files interactive abortion when user says no for directory."""
+    calc_file = tmp_path / "vasprun.xml"
+    calc_file.write_text("content", encoding="utf-8")
+
+    import sys
+
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(typer, "confirm", lambda prompt: False)
+
+    with pytest.raises(typer.Exit) as exc:
+        _find_calc_files(tmp_path, assume_yes=False)
+    assert exc.value.exit_code == 0
+
+
+def test_find_calc_files_non_interactive_dir(tmp_path, monkeypatch, caplog):
+    """Test _find_calc_files non-interactive environment branch for directory."""
+    import logging
+
+    caplog.set_level(logging.INFO)
+    calc_file = tmp_path / "vasprun.xml"
+    calc_file.write_text("content", encoding="utf-8")
+
+    import sys
+
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+
+    files = _find_calc_files(tmp_path, assume_yes=False)
+    assert len(files) == 1
+    assert "Non-interactive environment detected" in caplog.text
+
+
+def test_find_calc_files_neither_file_nor_dir(tmp_path, monkeypatch):
+    """Test _find_calc_files error when path is neither file nor directory."""
+    test_path = tmp_path / "special"
+    test_path.touch()
+
+    monkeypatch.setattr(Path, "is_file", lambda self: False)
+    monkeypatch.setattr(Path, "is_dir", lambda self: False)
+
+    with pytest.raises(typer.Exit) as exc:
+        _find_calc_files(test_path, assume_yes=True)
+    assert exc.value.exit_code == 1
+
+
+def test_find_json_files_edge_cases(tmp_path):
+    """Test _find_json_files non-existent, non-matching file, and empty dir."""
+    from fairtool.cli import _find_json_files
+
+    # Non-existent
+    with pytest.raises(typer.Exit):
+        _find_json_files(Path("non_existent_path_999"))
+
+    # Non-matching file
+    other_file = tmp_path / "other.json"
+    other_file.write_text("{}", encoding="utf-8")
+    assert _find_json_files(other_file) == []
+
+    # Empty directory
+    empty_dir = tmp_path / "empty_dir"
+    empty_dir.mkdir()
+    assert _find_json_files(empty_dir) == []
+
+
+def test_cli_parse_no_files_and_failure(mock_all_runners, tmp_path, caplog):
+    """Test parse command when no files found or run_parser raises error."""
+    import logging
+
+    caplog.set_level(logging.INFO)
+    empty_dir = tmp_path / "empty"
+    empty_dir.mkdir()
+
+    # No files found
+    res = runner.invoke(app, ["parse", str(empty_dir), "--yes"])
+    assert res.exit_code == 0
+
+    # Parse failure
+    calc_file = tmp_path / "vasprun.xml"
+    calc_file.write_text("dummy", encoding="utf-8")
+    mock_all_runners["parse"].side_effect = RuntimeError("Parser crashed")
+
+    res2 = runner.invoke(app, ["parse", str(calc_file), "--yes"])
+    assert res2.exit_code == 0
+    assert "Failed:  1" in caplog.text
+
+
+def test_cli_summarize_options_and_skip(mock_all_runners, setup_test_files, caplog):
+    """Test summarize command template, skip existing, and failure."""
+    import logging
+
+    caplog.set_level(logging.INFO)
+    json_file = setup_test_files / "fair_parsed_data.json"
+
+    # Template option
+    res = runner.invoke(app, ["summarize", str(json_file), "--template", "mytemplate.j2", "--force"])
+    assert res.exit_code == 0
+
+    # Output already exists and not force -> skip
+    existing_md = setup_test_files / "fair_summarized_data.md"
+    existing_md.write_text("existing", encoding="utf-8")
+    res_skip = runner.invoke(app, ["summarize", str(json_file)])
+    assert res_skip.exit_code == 0
+    assert "Skipped: 1" in caplog.text
+
+    # Summarize raises exception
+    mock_all_runners["summarize"].side_effect = RuntimeError("Summarize failed")
+    res_err = runner.invoke(app, ["summarize", str(json_file), "--force"])
+    assert res_err.exit_code == 0
+    assert "Failed:  1" in caplog.text
+
+
+def test_cli_summarize_no_json_files(tmp_path, caplog):
+    """Test summarize command when no JSON files are found."""
+    import logging
+
+    caplog.set_level(logging.WARNING)
+    empty_dir = tmp_path / "empty"
+    empty_dir.mkdir()
+    res = runner.invoke(app, ["summarize", str(empty_dir)])
+    assert res.exit_code == 0
+    assert "No 'fair_parsed_*.json' files found" in caplog.text
+
+
+def test_cli_visualize_build_and_serve_modes(setup_test_files, monkeypatch):
+    """Test visualize command with --build and --serve."""
+    import fairtool.cli as fair_cli
+
+    mock_serve_docs = MagicMock()
+    monkeypatch.setattr(fair_cli.visualize_module, "serve_docs", mock_serve_docs)
+    monkeypatch.setattr(fair_cli.visualize_module, "run_visualization", MagicMock())
+
+    # Build mode
+    res_build = runner.invoke(app, ["visualize", str(setup_test_files), "--build"])
+    assert res_build.exit_code == 0
+    assert mock_serve_docs.called
+
+    # Build mode failure
+    mock_serve_docs.side_effect = RuntimeError("Build failure")
+    res_build_err = runner.invoke(app, ["visualize", str(setup_test_files), "--build"])
+    assert res_build_err.exit_code == 1
+
+    # Serve mode
+    mock_serve_docs.side_effect = None
+    mock_serve_docs.reset_mock()
+    res_serve = runner.invoke(app, ["visualize", str(setup_test_files), "--serve"])
+    assert res_serve.exit_code == 0
+    assert mock_serve_docs.called
+
+    # Serve mode failure
+    mock_serve_docs.side_effect = RuntimeError("Server failure")
+    res_serve_err = runner.invoke(app, ["visualize", str(setup_test_files), "--serve"])
+    assert res_serve_err.exit_code == 1
+
+
+def test_cli_all_command_workflow_and_errors(setup_test_files, mock_all_runners, tmp_path):
+    """Test all command happy path and all error conditions."""
+    out_dir = tmp_path / "all_out"
+    out_dir.mkdir()
+
+    # 1. No files found to parse
+    empty_dir = tmp_path / "empty_dir_all"
+    empty_dir.mkdir()
+    res = runner.invoke(app, ["all", str(empty_dir), "--output", str(out_dir), "--yes"])
+    assert res.exit_code == 0
+
+    # 2. All files fail to parse (parse_success == 0)
+    mock_all_runners["parse"].side_effect = RuntimeError("Parse failed")
+    res_fail = runner.invoke(app, ["all", str(setup_test_files / "vasprun.xml"), "--output", str(out_dir), "--yes"])
+    assert res_fail.exit_code == 1
+
+    # Reset parse
+    mock_all_runners["parse"].side_effect = None
+
+    # 3. Analyze step fails
+    mock_all_runners["analyze"].side_effect = RuntimeError("Analyze failed")
+    res_ana_err = runner.invoke(app, ["all", str(setup_test_files / "vasprun.xml"), "--output", str(out_dir), "--yes"])
+    assert res_ana_err.exit_code == 1
+    mock_all_runners["analyze"].side_effect = None
+
+    # 4. Summarize step outer error
+    with patch("fairtool.cli._find_json_files", side_effect=RuntimeError("Find json error")):
+        res_sum_err = runner.invoke(
+            app, ["all", str(setup_test_files / "vasprun.xml"), "--output", str(out_dir), "--yes"]
+        )
+        assert res_sum_err.exit_code == 1
+
+    # 5. Export step fails
+    mock_all_runners["export"].side_effect = RuntimeError("Export error")
+    res_exp_err = runner.invoke(app, ["all", str(setup_test_files / "vasprun.xml"), "--output", str(out_dir), "--yes"])
+    assert res_exp_err.exit_code == 1
+    mock_all_runners["export"].side_effect = None
+
+    # 6. Visualize step fails
+    mock_all_runners["visualize"].side_effect = RuntimeError("Viz error")
+    res_viz_err = runner.invoke(app, ["all", str(setup_test_files / "vasprun.xml"), "--output", str(out_dir), "--yes"])
+    assert res_viz_err.exit_code == 1
+    mock_all_runners["visualize"].side_effect = None
+
+    # 7. Happy path full workflow
+    (out_dir / "fair_parsed_test.json").write_text("{}", encoding="utf-8")
+    res_happy = runner.invoke(app, ["all", str(setup_test_files / "vasprun.xml"), "--output", str(out_dir), "--yes"])
+    assert res_happy.exit_code == 0

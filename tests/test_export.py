@@ -121,3 +121,66 @@ def test_run_export_corrupted_csv(tmp_path):
 
     run_export(bad_csv, out_dir, "csv")
     assert not (out_dir / "exported_data.csv").exists()
+
+
+def test_run_export_corrupted_csv_in_directory(tmp_path):
+    """Test handling of unparseable analysis_summary.csv inside directory."""
+    bad_dir = tmp_path / "bad_dir"
+    bad_dir.mkdir()
+    bad_csv = bad_dir / "analysis_summary.csv"
+    bad_csv.write_bytes(b"\x00\xff\xfe\xff")
+    out_dir = tmp_path / "out_bad_dir"
+    out_dir.mkdir()
+
+    run_export(bad_dir, out_dir, "csv")
+    assert not (out_dir / "exported_data.csv").exists()
+
+
+def test_run_export_csv_non_dataframe(sample_csv_data, tmp_path, monkeypatch):
+    """Test CSV export when loaded data is not a DataFrame."""
+    out_dir = tmp_path / "out_non_df"
+    out_dir.mkdir()
+
+    # Monkeypatch pd.read_csv to return a dict
+    monkeypatch.setattr(pd, "read_csv", lambda *args, **kwargs: {"not": "a dataframe"})
+    run_export(sample_csv_data["csv_file"], out_dir, "csv")
+    assert not (out_dir / "exported_data.csv").exists()
+
+
+def test_run_export_yaml_and_json_from_list_and_dict(sample_csv_data, tmp_path, monkeypatch):
+    """Test YAML and JSON summary export when data is a list or dict."""
+    out_dir = tmp_path / "out_list_dict"
+    out_dir.mkdir()
+
+    monkeypatch.setattr(pd, "read_csv", lambda *args, **kwargs: [{"item": 1}, {"item": 2}])
+    run_export(sample_csv_data["csv_file"], out_dir, "yaml")
+    assert (out_dir / "exported_data.yaml").exists()
+
+    run_export(sample_csv_data["csv_file"], out_dir, "json_summary")
+    assert (out_dir / "exported_summary.json").exists()
+
+
+def test_run_export_unsupported_data_types(sample_csv_data, tmp_path, monkeypatch):
+    """Test YAML and JSON export when loaded data is an unsupported type (e.g., int/set)."""
+    out_dir = tmp_path / "out_unsupported_types"
+    out_dir.mkdir()
+
+    monkeypatch.setattr(pd, "read_csv", lambda *args, **kwargs: 12345)
+    run_export(sample_csv_data["csv_file"], out_dir, "yaml")
+    assert not (out_dir / "exported_data.yaml").exists()
+
+    run_export(sample_csv_data["csv_file"], out_dir, "json_summary")
+    assert not (out_dir / "exported_summary.json").exists()
+
+
+def test_run_export_write_exception_raised(sample_csv_data, tmp_path, monkeypatch):
+    """Test that unexpected exceptions during export are logged and re-raised."""
+    out_dir = tmp_path / "out_err"
+    out_dir.mkdir()
+
+    def mock_to_csv(self, *args, **kwargs):
+        raise OSError("Disk write error")
+
+    monkeypatch.setattr(pd.DataFrame, "to_csv", mock_to_csv)
+    with pytest.raises(OSError):
+        run_export(sample_csv_data["csv_file"], out_dir, "csv")
