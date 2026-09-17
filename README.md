@@ -2,7 +2,7 @@
 # fairtool - Computational Materials Data Processing made FAIR
 
 [![Tests & Coverage](https://github.com/neelravi/fairtool/actions/workflows/python-app.yml/badge.svg)](https://github.com/neelravi/fairtool/actions/workflows/python-app.yml)
-[![Coverage Status](https://img.shields.io/badge/coverage-67%25-brightgreen.svg)](https://github.com/neelravi/fairtool/actions/workflows/python-app.yml)
+[![codecov](https://codecov.io/gh/neelravi/fairtool/branch/main/graph/badge.svg)](https://codecov.io/gh/neelravi/fairtool)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![Lint and Code Quality](https://github.com/neelravi/fairtool/actions/workflows/lint.yml/badge.svg)](https://github.com/neelravi/fairtool/actions/workflows/lint.yml)
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
