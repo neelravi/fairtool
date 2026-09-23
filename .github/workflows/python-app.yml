@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout repository
@@ -43,7 +43,7 @@ jobs:
           python -m pytest -v --cov=fairtool --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage artifact
-        if: matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest'
+        if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v7
         with:
           name: coverage-report
@@ -51,7 +51,7 @@ jobs:
           retention-days: 14
 
       - name: Upload coverage to Codecov
-        if: matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest'
+        if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
