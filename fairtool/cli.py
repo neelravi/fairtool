@@ -3,13 +3,12 @@
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
 import rich
 import typer
 from rich.console import Console
 from rich.logging import RichHandler
-from typing_extensions import Annotated
 
 from . import __version__
 from . import analyze as analyze_module

@@ -3,7 +3,12 @@ lxml>=5.1.1
 numpy>=1.22
 msgpack>=0.6.2
 nomad-lab>=1.2.1
+nomad-parser-plugins-electronic>=1.1.0
 typer>=0.20.0
 mkdocs-material
-pymatgen>=2025.10.7
+pymatgen>=2026.9.24
 mkdocs-macros-plugin
+pint>=0.23
+pandas>=2.0
+pyyaml>=6.0
+rich>=13.8.0

@@ -37,7 +37,7 @@ This following sections showcase how a complex computational materials science c
 This guide explains how to install the `fairtool` package and its dependencies using [uv](https://github.com/astral-sh/uv), a fast Python package installer and resolver.
 
 ## Prerequisites
-- **Python 3.10 – 3.12** (Python 3.9 and earlier are no longer supported)
+- **Python 3.11 – 3.13** (Python 3.10 and earlier are no longer supported)
 - [uv](https://github.com/astral-sh/uv) installed (see below)
 - Git (optional, for cloning the repository)
 
@@ -59,7 +59,7 @@ This will install `uv` to `~/.local/bin/uv` by default. Make sure this directory
 You may install Python using uv quickly with:
 
 ```bash
-uv python install 3.10
+uv python install 3.11
 ```
 
 ## 3. Create a Virtual Environment with uv
@@ -94,7 +94,7 @@ fair
 ```
 
 ## Troubleshooting
-- Ensure you are using Python 3.10 or later (3.10, 3.11, or 3.12) for best compatibility.
+- Ensure you are using Python 3.11 or later (3.11, 3.12, or 3.13) for best compatibility.
 - If you see `ModuleNotFoundError: No module named 'fairtool'`, make sure your `PYTHONPATH` includes the project root.
 - If `uv` is not found, ensure `~/.local/bin` is in your `PATH`.
 
