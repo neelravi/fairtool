@@ -3,7 +3,7 @@
 
 [![Tests & Coverage](https://github.com/neelravi/fairtool/actions/workflows/python-app.yml/badge.svg)](https://github.com/neelravi/fairtool/actions/workflows/python-app.yml)
 [![codecov](https://codecov.io/gh/neelravi/fairtool/branch/main/graph/badge.svg)](https://codecov.io/gh/neelravi/fairtool)
-[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg)](https://www.python.org/)
 [![Lint and Code Quality](https://github.com/neelravi/fairtool/actions/workflows/lint.yml/badge.svg)](https://github.com/neelravi/fairtool/actions/workflows/lint.yml)
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -26,7 +26,7 @@ It is designed to work with various calculation output files and provides a stre
 This guide explains how to install the `fairtool` package and its dependencies using [uv](https://github.com/astral-sh/uv), a fast Python package installer and resolver.
 
 ## Prerequisites
-- **Python 3.11 – 3.13** (*Note: Python <= 3.10 is unsupported because modern upstream scientific dependencies such as `pymatgen` (2026+) and `numpy` require Python 3.11 or newer*)
+- **Python 3.11 – 3.14** (*Note: Python <= 3.10 is unsupported because modern upstream scientific dependencies such as `pymatgen` (2026+) and `numpy` require Python 3.11 or newer*)
 - [uv](https://github.com/astral-sh/uv) installed (see below)
 - Git (optional, for cloning the repository)
 
