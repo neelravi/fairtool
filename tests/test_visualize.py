@@ -1,12 +1,16 @@
 import json
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import yaml
 
 from fairtool.visualize import (
+    _copy_resource_tree,
     _extract_title,
     _hr_size,
+    _site_template,
     generate_markdown_embedding,
     get_band_structure_data,
     get_dos_data,
@@ -14,6 +18,15 @@ from fairtool.visualize import (
     run_visualization,
     serve_docs,
 )
+
+
+@pytest.fixture
+def fake_template(tmp_path, monkeypatch):
+    """Point serve_docs at an empty site template that the test populates."""
+    template = tmp_path / "template"
+    template.mkdir()
+    monkeypatch.setattr("fairtool.visualize._site_template", lambda: template)
+    return template
 
 
 def test_hr_size():
@@ -145,6 +158,48 @@ def test_run_visualization_invalid_input(tmp_path):
     assert len(list(out_dir.iterdir())) == 0
 
 
+def test_site_template_ships_files_referenced_by_mkdocs_yml():
+    """Every local file the packaged mkdocs.yml points at is shipped in the site template."""
+
+    class TagTolerantLoader(yaml.SafeLoader):
+        """SafeLoader that ignores the !ENV and !!python/* tags used in mkdocs.yml."""
+
+    TagTolerantLoader.add_multi_constructor("", lambda loader, suffix, node: None)
+
+    template = _site_template()
+    cfg = yaml.load(template.joinpath("mkdocs.yml").read_text(encoding="utf-8"), Loader=TagTolerantLoader)
+    docs = template / "docs"
+    # `nav` is not checked: serve_docs always replaces it with one generated from the user's docs
+
+    # Resolved against docs_dir
+    for ref in [*cfg["extra_css"], *cfg["extra_javascript"], cfg["theme"]["favicon"], cfg["theme"]["logo"]]:
+        assert docs.joinpath(ref).is_file(), ref
+    # Resolved against the directory holding mkdocs.yml
+    for hook in cfg["hooks"]:
+        assert template.joinpath(hook).is_file(), hook
+    assert template.joinpath(cfg["theme"]["custom_dir"]).is_dir()
+    macros = next(p["macros"] for p in cfg["plugins"] if isinstance(p, dict) and "macros" in p)
+    assert template.joinpath(f"{macros['module_name']}.py").is_file()
+    # Homepage copied into the generated site
+    assert docs.joinpath("README.md").is_file()
+
+
+def test_copy_resource_tree_skips_pycache(tmp_path):
+    """Packaged resource trees are copied recursively, without bytecode caches."""
+    src = tmp_path / "src"
+    (src / "hooks" / "__pycache__").mkdir(parents=True)
+    (src / "hooks" / "shortcodes.py").write_text("x = 1\n", encoding="utf-8")
+    (src / "hooks" / "__pycache__" / "shortcodes.cpython-311.pyc").write_bytes(b"\x00")
+    (src / "main.html").write_text("<html></html>", encoding="utf-8")
+
+    dest = tmp_path / "dest"
+    _copy_resource_tree(src, dest)
+
+    assert (dest / "main.html").read_text(encoding="utf-8") == "<html></html>"
+    assert (dest / "hooks" / "shortcodes.py").read_text(encoding="utf-8") == "x = 1\n"
+    assert not (dest / "hooks" / "__pycache__").exists()
+
+
 def test_serve_docs_dry_run(tmp_path):
     """Test serve_docs with dry_run=True creates and normalizes temporary mkdocs configuration."""
     docs_dir = tmp_path / "docs"
@@ -155,6 +210,13 @@ def test_serve_docs_dry_run(tmp_path):
     assert temp_dir is not None
     assert Path(temp_dir).exists()
     assert (Path(temp_dir) / "mkdocs.yml").exists()
+
+    # The files the generated config relies on are copied out of the packaged template
+    assert (Path(temp_dir) / "macros.py").is_file()
+    assert (Path(temp_dir) / "material" / "overrides" / "hooks" / "shortcodes.py").is_file()
+    for asset in ("js/3Dmol-min.js", "js/structure.js", "stylesheets/extra.css", "assets/logo.png"):
+        assert (Path(temp_dir) / "docs" / asset).is_file(), asset
+    assert "custom_dir: material\n" in (Path(temp_dir) / "mkdocs.yml").read_text(encoding="utf-8")
 
     # Clean up temp dir
     import shutil
@@ -323,14 +385,16 @@ def test_run_visualization_embed_save_failure(tmp_path, monkeypatch):
     run_visualization(json_file, out_dir, embed=True)
 
 
-def test_serve_docs_missing_packaged_mkdocs(tmp_path, monkeypatch):
+def test_serve_docs_missing_packaged_mkdocs(tmp_path, fake_template, caplog):
     """Test serve_docs raises SystemExit if packaged mkdocs.yml is missing."""
     docs_dir = tmp_path / "docs"
     docs_dir.mkdir()
 
-    with patch("pathlib.Path.exists", return_value=False):
-        with pytest.raises(SystemExit):
-            serve_docs(docs_dir)
+    with pytest.raises(SystemExit) as excinfo:
+        serve_docs(docs_dir)
+
+    assert excinfo.value.code == 1
+    assert "Packaged mkdocs.yml not found" in caplog.text
 
 
 def test_serve_docs_smart_index_generation(tmp_path):
@@ -452,7 +516,7 @@ def test_serve_docs_serve_interactive(tmp_path):
         serve_docs(docs_dir, port=8001, dry_run=False)
 
 
-def test_serve_docs_generated_index_tree(tmp_path, monkeypatch):
+def test_serve_docs_generated_index_tree(tmp_path, fake_template):
     """Test auto-generating index.md with directory tree when no homepage exists."""
     docs_dir = tmp_path / "docs_tree"
     docs_dir.mkdir()
@@ -460,15 +524,8 @@ def test_serve_docs_generated_index_tree(tmp_path, monkeypatch):
     sub.mkdir()
     (sub / "nested.md").write_text("# Nested Page", encoding="utf-8")
 
-    # Prevent packaged docs homepage from being copied so generated index runs
-    orig_exists = Path.exists
-
-    def mock_exists(self):
-        if self.name in ("README.md", "index.md") and "documentation" in str(self):
-            return False
-        return orig_exists(self)
-
-    monkeypatch.setattr(Path, "exists", mock_exists)
+    # A template without a packaged homepage, so the generated index runs
+    (fake_template / "mkdocs.yml").write_text("site_name: Tree Docs\n", encoding="utf-8")
 
     temp_dir = serve_docs(docs_dir, port=9996, dry_run=True)
     assert temp_dir is not None
@@ -484,13 +541,14 @@ def test_serve_docs_generated_index_tree(tmp_path, monkeypatch):
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def test_serve_docs_clean_yaml_config(tmp_path, monkeypatch):
+def test_serve_docs_clean_yaml_config(tmp_path, fake_template, monkeypatch, caplog):
     """Test serve_docs when packaged mkdocs.yml is valid standard YAML with plugins and overrides."""
     docs_dir = tmp_path / "docs_clean"
     docs_dir.mkdir()
     (docs_dir / "index.md").write_text("# Clean Docs", encoding="utf-8")
 
-    clean_yaml = """
+    (fake_template / "mkdocs.yml").write_text(
+        """
 site_name: Clean Docs
 site_url: https://localhost/fairtool
 theme:
@@ -501,108 +559,109 @@ plugins:
   - include_dir_to_nav
   - include_dir_to_nav:
       some: option
-"""
-    orig_read_text = Path.read_text
+""",
+        encoding="utf-8",
+    )
 
-    def mock_read_text(self, *args, **kwargs):
-        if self.name == "mkdocs.yml" and "documentation" in str(self):
-            return clean_yaml
-        return orig_read_text(self, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "read_text", mock_read_text)
-
-    # Also test packaged_macros.exists() is False and material copy fails
-    orig_exists = Path.exists
-
-    def mock_exists(self):
-        if self.name == "macros.py":
-            return False
-        return orig_exists(self)
-
-    monkeypatch.setattr(Path, "exists", mock_exists)
-
-    import shutil
-
-    orig_copytree = shutil.copytree
-
-    def mock_copytree(src, dst, *args, **kwargs):
-        if "material" in str(src):
-            raise OSError("Copy material failed")
-        return orig_copytree(src, dst, *args, **kwargs)
-
-    monkeypatch.setattr(shutil, "copytree", mock_copytree)
+    # Also test that the template has no macros.py and that copying the material folder fails
+    (fake_template / "material" / "overrides").mkdir(parents=True)
+    monkeypatch.setattr(
+        "fairtool.visualize._copy_resource_tree", MagicMock(side_effect=OSError("Copy material failed"))
+    )
 
     temp_dir = serve_docs(docs_dir, port=9995, dry_run=True)
     assert temp_dir is not None
     temp_yaml = Path(temp_dir) / "mkdocs.yml"
     assert temp_yaml.exists()
-    assert "include_dir_to_nav" not in temp_yaml.read_text(encoding="utf-8")
+    content = temp_yaml.read_text(encoding="utf-8")
+    assert "include_dir_to_nav" not in content
+    assert yaml.safe_load(content)["theme"]["custom_dir"] == "material"
+    assert not (Path(temp_dir) / "macros.py").exists()
+    assert "Failed to copy packaged material overrides" in caplog.text
+
+    import shutil
 
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def test_serve_docs_plugin_importable(tmp_path, monkeypatch):
+def test_serve_docs_plugin_importable(tmp_path, fake_template, monkeypatch, caplog):
     """Test serve_docs when include_dir_to_nav is importable in the environment."""
     docs_dir = tmp_path / "docs_importable"
     docs_dir.mkdir()
     (docs_dir / "index.md").write_text("# Importable Docs", encoding="utf-8")
 
-    clean_yaml = """
+    (fake_template / "mkdocs.yml").write_text(
+        """
 site_name: Importable Docs
 site_url: https://localhost/fairtool
 plugins:
   - include_dir_to_nav
-"""
-    orig_read_text = Path.read_text
-
-    def mock_read_text(self, *args, **kwargs):
-        if self.name == "mkdocs.yml" and "documentation" in str(self):
-            return clean_yaml
-        return orig_read_text(self, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "read_text", mock_read_text)
+""",
+        encoding="utf-8",
+    )
 
     import importlib
 
-    monkeypatch.setattr(importlib, "import_module", lambda name: MagicMock())
+    caplog.set_level(logging.INFO, logger="fairtool")
+    real_import_module = importlib.import_module
+    monkeypatch.setattr(
+        importlib,
+        "import_module",
+        lambda name, *args: MagicMock() if name == "include_dir_to_nav" else real_import_module(name, *args),
+    )
 
     temp_dir = serve_docs(docs_dir, port=9993, dry_run=True)
     assert temp_dir is not None
+    assert "'include_dir_to_nav' plugin is available" in caplog.text
     import shutil
 
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-def test_serve_docs_no_nav_fallback(tmp_path, monkeypatch):
+def test_serve_docs_no_nav_fallback(tmp_path, fake_template, monkeypatch):
     """Test serve_docs nav injection fallback when content has no nav entry."""
     docs_dir = tmp_path / "docs_nonav"
     docs_dir.mkdir()
     (docs_dir / "index.md").write_text("# No Nav Docs", encoding="utf-8")
 
-    no_nav_content = """
+    (fake_template / "mkdocs.yml").write_text(
+        """
 site_name: No Nav Docs
 site_url: https://localhost/fairtool
 custom_dir: material/overrides
-"""
-    orig_read_text = Path.read_text
-
-    def mock_read_text(self, *args, **kwargs):
-        if self.name == "mkdocs.yml" and "documentation" in str(self):
-            return no_nav_content
-        return orig_read_text(self, *args, **kwargs)
+""",
+        encoding="utf-8",
+    )
 
     # Force yaml.safe_load to fail so it takes fallback textual branch
-    import yaml
-
     monkeypatch.setattr(yaml, "safe_load", MagicMock(side_effect=Exception("YAML load fail")))
-    monkeypatch.setattr(Path, "read_text", mock_read_text)
 
     temp_dir = serve_docs(docs_dir, port=9994, dry_run=True)
     assert temp_dir is not None
     temp_yaml = Path(temp_dir) / "mkdocs.yml"
     assert temp_yaml.exists()
-    assert "nav:" in temp_yaml.read_text(encoding="utf-8")
+    content = temp_yaml.read_text(encoding="utf-8")
+    assert "nav:" in content
+    assert "custom_dir: material\n" in content
 
     import shutil
 
     shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def test_serve_docs_build_with_packaged_template(tmp_path):
+    """A real mkdocs build with the packaged template renders pages, macros and static assets."""
+    docs_dir = tmp_path / "calcs"
+    (docs_dir / "example01").mkdir(parents=True)
+    (docs_dir / "example01" / "summary.md").write_text(
+        "# Example 01\n\n{{ structure_viewer('fair-structure.json') }}\n", encoding="utf-8"
+    )
+    site_dir = tmp_path / "site"
+
+    serve_docs(docs_dir, build=True, build_dir=site_dir)
+
+    assert (site_dir / "index.html").is_file()
+    for asset in ("js/3Dmol-min.js", "js/structure.js", "stylesheets/extra.css", "assets/logo.png"):
+        assert (site_dir / asset).is_file(), asset
+    # structure_viewer comes from the packaged macros.py
+    assert 'class="structure-viewer"' in (site_dir / "example01" / "summary.html").read_text(encoding="utf-8")

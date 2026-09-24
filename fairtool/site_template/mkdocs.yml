@@ -28,7 +28,7 @@ site_description: |
 # Repository
 repo_name: neelravi/fairtool
 repo_url: https://github.com/neelravi/fairtool
-edit_uri: blob/main/documentation/docs/
+edit_uri: blob/main/fairtool/site_template/docs/
 
 copyright: >
   Copyright &copy; 2025 - – Dr. Ravindra Shinde. <a href="#__consent">Change cookie settings</a>
