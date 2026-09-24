@@ -21,6 +21,11 @@ ELEMENTARY_CHARGE_VALUE = 1.602176634e-19  # Elementary charge in Coulombs, used
 log = logging.getLogger(__name__)
 u = pint.UnitRegistry()
 
+# `run_parser` writes one `fair_parsed_<stem>.json` per calculation; the later
+# steps (analyze, summarize) discover those files with PARSED_JSON_GLOB.
+PARSED_JSON_PREFIX = "fair_parsed_"
+PARSED_JSON_GLOB = f"{PARSED_JSON_PREFIX}*.json"
+
 
 def _create_structure_json(full_data: dict, output_dir: Path, base_name: str):
     """
@@ -127,7 +132,7 @@ def run_parser(input_file: Path, output_dir: Path, force: bool) -> bool:
     """
     # Define output file paths
     base_name = input_file.stem
-    json_output_path = output_dir / f"fair_parsed_{base_name}.json"
+    json_output_path = output_dir / f"{PARSED_JSON_PREFIX}{base_name}.json"
 
     # Unused variable removed
     # md_output_path = output_dir / f"fair_summarized_{base_name}.md"
