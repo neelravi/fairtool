@@ -1,3 +1,4 @@
+import json
 import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
@@ -219,6 +220,30 @@ def test_cli_analyze_output_defaults_to_input_location(mock_all_runners, setup_t
         call(setup_test_files, setup_test_files, None),
         call(json_file, setup_test_files, None),
     ]
+
+
+def test_cli_analyze_then_export_calculations_with_the_same_file_name(tmp_path):
+    """
+    Regression: analyzing a tree of calculations gives each one its own identifier, even when
+    their parsed files share a name, so `fair export --format json_summary` keeps them all
+    instead of failing on a duplicate identifier.
+    """
+    calc_dir = tmp_path / "calcs"
+    for example in ["Advanced/example04", "Expert/example08"]:
+        (calc_dir / example).mkdir(parents=True)
+        # What `fair parse calcs -r` leaves next to each calcs/<example>/vasprun.xml
+        shutil.copy(Path(__file__).parent / "VASP" / example / "fair_parsed_vasprun.json", calc_dir / example)
+    analysis_dir = tmp_path / "analysis"
+
+    res_analyze = runner.invoke(app, ["analyze", str(calc_dir), "--output", str(analysis_dir)])
+    assert res_analyze.exit_code == 0
+
+    res_export = runner.invoke(
+        app, ["export", str(analysis_dir), "--output", str(tmp_path), "--format", "json_summary"]
+    )
+    assert res_export.exit_code == 0
+    summary = json.loads((tmp_path / "exported_summary.json").read_text(encoding="utf-8"))
+    assert sorted(summary) == ["Advanced/example04/fair_parsed_vasprun", "Expert/example08/fair_parsed_vasprun"]
 
 
 def test_cli_analyze_then_export_without_analyze_output(tmp_path, monkeypatch):
