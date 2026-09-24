@@ -189,14 +189,14 @@ def _find_json_files(path: Path, recursive: bool = True) -> list[Path]:
         raise typer.Exit(code=1)
 
     if path.is_file():
-        if path.name.startswith("fair_parsed_") and path.suffix == ".json":
+        if path.name.startswith(parse_module.PARSED_JSON_PREFIX) and path.suffix == ".json":
             files_to_process.append(path)
         else:
             log.warning(f"Input file {path} is not a 'fair_parsed_*.json' file. Skipping.")
 
     elif path.is_dir():
         search_method = path.rglob if recursive else path.glob
-        potential_files = list(search_method("fair_parsed_*.json"))
+        potential_files = list(search_method(parse_module.PARSED_JSON_GLOB))
 
         if not potential_files:
             log.warning(f"No 'fair_parsed_*.json' files found in {path}")
@@ -331,11 +331,6 @@ def analyze(
     log.info(f"Analysis output will be saved to: {output_dir}")
     if config:
         log.info(f"Using analysis configuration: {config}")
-
-    # TODO: Implement logic to find relevant JSON files if input_path is a directory
-    # Similar to _find_calc_files but looking for *.json or specific names
-    # For now, we assume run_analysis can handle a directory.
-    # json_files = _find_json_files(input_path, recursive=True) # If run_analysis can't handle dirs
 
     try:
         log.info("Analysis started.")

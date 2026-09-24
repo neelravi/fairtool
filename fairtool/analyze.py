@@ -10,6 +10,8 @@ from typing import Optional
 import pandas as pd  # Example: for creating summary tables
 import yaml  # For config file
 
+from .parse import PARSED_JSON_GLOB
+
 # Optional: Import pymatgen or other analysis libraries
 # from pymatgen.core import Structure
 # from pymatgen.electronic_structure.dos import CompleteDos
@@ -23,7 +25,8 @@ def run_analysis(input_path: Path, output_dir: Path, config_path: Optional[Path]
     Performs analysis on parsed data (JSON file or directory of JSON files).
 
     Args:
-        input_path: Path to the parsed JSON file or directory.
+        input_path: Path to a parsed JSON file, or a directory searched recursively for
+            the `fair_parsed_*.json` files written by `fair parse`.
         output_dir: Directory to save analysis results.
         config_path: Optional path to a YAML configuration file for analysis tasks.
     """
@@ -42,10 +45,10 @@ def run_analysis(input_path: Path, output_dir: Path, config_path: Optional[Path]
     if input_path.is_file() and input_path.suffix == ".json":
         files_to_analyze = [input_path]
     elif input_path.is_dir():
-        log.info(f"Searching for parsed JSON files (*_parsed.json) in: {input_path}")
-        files_to_analyze = sorted(list(input_path.rglob("*_parsed.json")))
+        log.info(f"Searching for parsed JSON files ({PARSED_JSON_GLOB}) in: {input_path}")
+        files_to_analyze = sorted(list(input_path.rglob(PARSED_JSON_GLOB)))
         if not files_to_analyze:
-            log.warning(f"No '*_parsed.json' files found in {input_path}")
+            log.warning(f"No '{PARSED_JSON_GLOB}' files found in {input_path}")
             return
     else:
         log.error(f"Input path must be a JSON file or a directory containing them: {input_path}")

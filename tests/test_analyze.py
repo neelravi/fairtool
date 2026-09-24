@@ -76,21 +76,39 @@ def test_run_analysis_directory(tmp_path, sample_parsed_data):
     """Test run_analysis on a directory containing multiple parsed files."""
     calc_dir = tmp_path / "calcs"
     calc_dir.mkdir()
-    (calc_dir / "calc1_parsed.json").write_text(json.dumps(sample_parsed_data), encoding="utf-8")
-    (calc_dir / "calc2_parsed.json").write_text(json.dumps(sample_parsed_data), encoding="utf-8")
+    (calc_dir / "fair_parsed_calc1.json").write_text(json.dumps(sample_parsed_data), encoding="utf-8")
+    (calc_dir / "fair_parsed_calc2.json").write_text(json.dumps(sample_parsed_data), encoding="utf-8")
 
     out_dir = tmp_path / "output"
     out_dir.mkdir()
 
     run_analysis(calc_dir, out_dir, None)
 
-    assert (out_dir / "calc1_parsed_analysis.yaml").exists()
-    assert (out_dir / "calc2_parsed_analysis.yaml").exists()
+    assert (out_dir / "fair_parsed_calc1_analysis.yaml").exists()
+    assert (out_dir / "fair_parsed_calc2_analysis.yaml").exists()
 
     csv_file = out_dir / "analysis_summary.csv"
     assert csv_file.exists()
     df = pd.read_csv(csv_file)
     assert len(df) == 2
+
+
+def test_run_analysis_directory_finds_fair_parse_output(tmp_path, sample_parsed_data):
+    """Regression: a directory search finds the fair_parsed_<name>.json files that `fair parse` writes."""
+    calc_dir = tmp_path / "calc"
+    calc_dir.mkdir()
+    # What `fair parse calc` leaves next to calc/dos_si_vasprun.xml
+    (calc_dir / "fair_parsed_dos_si_vasprun.json").write_text(json.dumps(sample_parsed_data), encoding="utf-8")
+    (calc_dir / "fair-structure.json").write_text("{}", encoding="utf-8")
+    out_dir = tmp_path / "output"
+    out_dir.mkdir()
+
+    run_analysis(calc_dir, out_dir, None)
+
+    csv_file = out_dir / "analysis_summary.csv"
+    assert csv_file.exists()
+    # Only the parsed calculation is analyzed, not the structure JSON beside it
+    assert pd.read_csv(csv_file)["identifier"].tolist() == ["fair_parsed_dos_si_vasprun"]
 
 
 def test_run_analysis_with_config(tmp_path, sample_parsed_data):
