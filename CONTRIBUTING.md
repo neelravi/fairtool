@@ -65,6 +65,8 @@ Documentation is built with `mkdocs-material`:
 fair visualize tests/VASP/ --serve
 ```
 
+The site template that `fair visualize` uses (`mkdocs.yml`, `macros.py`, theme overrides, hooks and static assets) lives in `fairtool/site_template/`. It ships inside the package as package data, so edits there apply to both source checkouts and installed wheels.
+
 ## Pull Request Guidelines
 
 1. Create a feature branch with a descriptive name: `git checkout -b feature/my-feature`.

@@ -1,5 +1,9 @@
 # License
 
+The theme overrides, hooks and bundled assets under `material/` are adapted from
+[Material for MkDocs](https://github.com/squidfunk/mkdocs-material), which is
+distributed under the following license.
+
 **MIT License**
 
 Copyright (c) 2016-2024 Martin Donath

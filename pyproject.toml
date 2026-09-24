@@ -57,6 +57,14 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["fairtool*"]
+
+# mkdocs site template used by `fair visualize` (config, macros, theme overrides, hooks, static assets)
+[tool.setuptools.package-data]
+fairtool = ["site_template/**/*"]
+
+[tool.setuptools.exclude-package-data]
+fairtool = ["*.pyc"]
 
 [project.urls]
 "Homepage" = "https://github.com/neelravi/fairtool"
@@ -86,6 +94,8 @@ show_missing = true
 [tool.ruff]
 line-length = 120
 target-version = "py311"
+# The site template holds mkdocs data (macros, vendored Material for MkDocs hooks), not fairtool code
+extend-exclude = ["fairtool/site_template"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]

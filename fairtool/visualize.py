@@ -10,6 +10,8 @@ import subprocess
 import sys
 import tempfile
 from datetime import datetime
+from importlib import resources
+from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Optional
 
@@ -353,11 +355,34 @@ def run_visualization(input_path: Path, output_dir: Path, embed: bool):
     log.info("Visualization data generation process completed.")
 
 
+# The mkdocs site template (mkdocs.yml, macros.py, theme overrides, hooks and
+# static assets) ships as package data inside `fairtool`, so `serve_docs` works
+# the same from a wheel install as from a source checkout.
+SITE_TEMPLATE = "site_template"
+
+
+def _site_template() -> Traversable:
+    """Return the packaged mkdocs site template directory."""
+    return resources.files("fairtool") / SITE_TEMPLATE
+
+
+def _copy_resource_tree(src: Traversable, dest: Path) -> None:
+    """Recursively copy a packaged resource directory to `dest` on disk, skipping bytecode caches."""
+    dest.mkdir(parents=True, exist_ok=True)
+    for entry in src.iterdir():
+        if entry.name == "__pycache__":
+            continue
+        if entry.is_dir():
+            _copy_resource_tree(entry, dest / entry.name)
+        else:
+            (dest / entry.name).write_bytes(entry.read_bytes())
+
+
 def serve_docs(
     docs_path: Path, port: int = 8000, dry_run: bool = False, build: bool = False, build_dir: Optional[Path] = None
 ):
     """
-    Launch an mkdocs server that uses the package's documentation styling (mkdocs.yml,
+    Launch an mkdocs server that uses the packaged site template (mkdocs.yml,
     macros.py, theme overrides) while scanning `docs_path` for the markdown files.
 
     This function creates a temporary mkdocs config that points `docs_dir` to the
@@ -370,13 +395,13 @@ def serve_docs(
         log.error(f"Docs path does not exist: {docs_path}")
         raise SystemExit(1)
 
-    # Locate the package's top-level documentation directory relative to this file
-    package_root = Path(__file__).resolve().parent.parent
-    packaged_docs = package_root / "documentation"
-    packaged_mkdocs = packaged_docs / "mkdocs.yml"
-    packaged_macros = packaged_docs / "macros.py"
+    # Locate the site template shipped as package data inside `fairtool`
+    template = _site_template()
+    packaged_docs = template / "docs"
+    packaged_mkdocs = template / "mkdocs.yml"
+    packaged_macros = template / "macros.py"
 
-    if not packaged_mkdocs.exists():
+    if not packaged_mkdocs.is_file():
         log.error(f"Packaged mkdocs.yml not found at expected location: {packaged_mkdocs}")
         raise SystemExit(1)
 
@@ -409,45 +434,29 @@ def serve_docs(
         except Exception:
             log.warning("Failed to copy user docs into temporary docs directory; continuing with limited content.")
 
-        # Copy packaged static assets (stylesheets, js, assets) into temp_docs.
-        # Some projects place these under `documentation/` and others under `documentation/docs/`.
-        # Try both locations so files like stylesheets/extra.css, js/structure.js and assets/logo.png
-        # are available to the dev server and avoid 404s.
-        candidate_roots = [packaged_docs, packaged_docs / "docs"]
-        for static_name in ("stylesheets", "js", "assets"):
-            copied = False
-            for root in candidate_roots:
-                src = root / static_name
-                if src.exists() and src.is_dir():
-                    try:
-                        shutil.copytree(src, temp_docs / static_name, dirs_exist_ok=True)
-                        log.debug(f"Copied static folder {src} -> {temp_docs / static_name}")
-                        copied = True
-                        break
-                    except Exception as e:
-                        log.debug(f"Could not copy packaged static folder {src}: {e}")
-            if not copied:
-                log.debug(f"No packaged static folder found for '{static_name}' in {candidate_roots}")
-
-        # Copy any `includes/` used by snippets (mkdocs docs/ often have an includes folder)
-        packaged_includes = packaged_docs / "docs" / "includes"
-        if packaged_includes.exists() and packaged_includes.is_dir():
+        # Copy packaged static assets (stylesheets, js, assets) and any `includes/`
+        # used by snippets into temp_docs, so files like stylesheets/extra.css,
+        # js/structure.js and assets/logo.png are available to the dev server and avoid 404s.
+        for static_name in ("stylesheets", "js", "assets", "includes"):
+            src = packaged_docs / static_name
+            if not src.is_dir():
+                log.debug(f"No packaged static folder found for '{static_name}' in {packaged_docs}")
+                continue
             try:
-                shutil.copytree(packaged_includes, temp_docs / "includes", dirs_exist_ok=True)
-                log.debug(f"Copied includes folder {packaged_includes} -> {temp_docs / 'includes'}")
+                _copy_resource_tree(src, temp_docs / static_name)
+                log.debug(f"Copied static folder {src} -> {temp_docs / static_name}")
             except Exception as e:
-                log.debug(f"Could not copy includes folder {packaged_includes}: {e}")
+                log.debug(f"Could not copy packaged static folder {src}: {e}")
 
         # If the packaged docs include a homepage (README.md or index.md), copy
         # that into the temporary docs root so the packaged theme overrides
         # (which often target the site homepage) are applied. Do not overwrite
         # any user-provided file.
-        packaged_docs_docs = packaged_docs / "docs"
         for candidate in ("README.md", "index.md"):
-            src_home = packaged_docs_docs / candidate
-            if src_home.exists() and not (temp_docs / candidate).exists():
+            src_home = packaged_docs / candidate
+            if src_home.is_file() and not (temp_docs / candidate).exists():
                 try:
-                    shutil.copy2(src_home, temp_docs / candidate)
+                    (temp_docs / candidate).write_bytes(src_home.read_bytes())
                     log.debug(f"Copied packaged homepage {src_home} -> {temp_docs / candidate}")
                     # Stop after copying the first available candidate
                     break
@@ -841,22 +850,22 @@ def serve_docs(
 
         temp_mkdocs.write_text(content, encoding="utf-8")
 
-        # Copy macros.py next to temp mkdocs.yml if it exists in packaged docs
-        if packaged_macros.exists():
+        # Copy macros.py next to temp mkdocs.yml if it exists in the packaged template
+        if packaged_macros.is_file():
             try:
-                shutil.copy(packaged_macros, temp_dir / "macros.py")
+                (temp_dir / "macros.py").write_bytes(packaged_macros.read_bytes())
             except Exception:
                 log.debug("Failed to copy macros.py to temporary dir", exc_info=True)
         else:
             log.debug("No packaged macros.py found; continuing without copying macros.")
 
-        # Also copy any overrides or theme folders that might be referenced relatively
-        # (e.g., material customizations in `documentation/material`)
-        packaged_material = packaged_docs / "material"
-        if packaged_material.exists() and packaged_material.is_dir():
+        # Also copy the `material` theme folder that the config references
+        # relatively (custom_dir and the hooks under `material/overrides`).
+        packaged_material = template / "material"
+        if packaged_material.is_dir():
             dst_material = temp_dir / "material"
             try:
-                shutil.copytree(packaged_material, dst_material, dirs_exist_ok=True)
+                _copy_resource_tree(packaged_material, dst_material)
             except Exception:
                 # Don't fail if copying fails; warn instead
                 log.warning("Failed to copy packaged material overrides; theme customization may be missing.")
