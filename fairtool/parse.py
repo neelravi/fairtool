@@ -35,9 +35,12 @@ def _create_structure_json(full_data: dict, output_dir: Path, base_name: str):
     """
     structure = None
 
-    # 1) Try to get conventional structure from NOMAD topology
+    # 1) Try to get conventional structure from NOMAD topology. Its conventional cell is that of
+    #    the material a subsystem is made of, so it is the whole structure only for a bulk material.
+    #    For a graphene sheet with adsorbed molecules, it is the 2-atom cell of graphene.
     try:
-        topology = full_data.get("results", {}).get("material", {}).get("topology", [])
+        material = full_data.get("results", {}).get("material", {})
+        topology = material.get("topology", []) if material.get("structural_type") == "bulk" else []
         for entry in topology:
             if entry.get("label") == "conventional cell" and "atoms" in entry:
                 structure = _nomad_atoms_to_pymatgen(entry["atoms"])
