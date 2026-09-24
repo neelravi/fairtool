@@ -3,7 +3,6 @@ name: Documentation Build Check
 on:
   pull_request:
     paths:
-      - "documentation/**"
       - "fairtool/**"
       - "pyproject.toml"
       - "requirements.txt"
@@ -39,3 +38,54 @@ jobs:
 
       - name: Test build site
         run: fair visualize tests/VASP/ --build
+
+  build-docs-from-wheel:
+    name: Build Documentation from Installed Wheel
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.txt
+
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Check wheel contents
+        run: |
+          python - <<'EOF'
+          import glob, sys, zipfile
+          names = zipfile.ZipFile(glob.glob("dist/*.whl")[0]).namelist()
+          stray = sorted({n.split("/")[0] for n in names} - {"fairtool"})
+          stray = [t for t in stray if not t.endswith(".dist-info")]
+          if stray:
+              sys.exit(f"Wheel ships unexpected top-level entries: {stray}")
+          if "fairtool/site_template/mkdocs.yml" not in names:
+              sys.exit("Wheel is missing fairtool/site_template/mkdocs.yml")
+          print(f"Wheel OK: {len(names)} entries")
+          EOF
+
+      - name: Install wheel into a fresh virtual environment
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel-venv"
+          "$RUNNER_TEMP/wheel-venv/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/wheel-venv/bin/python" -m pip install dist/*.whl
+
+      # Run outside the checkout so nothing can be picked up from the source tree.
+      # `fair visualize --build` exits 0 even when mkdocs fails, so check the output.
+      - name: Build site outside the source checkout
+        working-directory: ${{ runner.temp }}
+        run: |
+          cp -r "$GITHUB_WORKSPACE/tests/VASP" VASP
+          "$RUNNER_TEMP/wheel-venv/bin/fair" visualize VASP --build
+          test -f site/index.html
