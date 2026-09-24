@@ -12,7 +12,7 @@ import yaml  # For YAML export
 log = logging.getLogger("fairtool")
 
 
-def run_export(input_path: Path, output_dir: Path, export_format: str):
+def run_export(input_path: Path, output_dir: Path, export_format: str) -> bool:
     """
     Exports parsed or analyzed data into the specified format.
 
@@ -20,6 +20,14 @@ def run_export(input_path: Path, output_dir: Path, export_format: str):
         input_path: Path to the data source (e.g., analysis_summary.csv, directory of JSON/YAML).
         output_dir: Directory to save the exported files.
         export_format: The desired output format (e.g., 'csv', 'yaml', 'json_summary').
+
+    Returns:
+        True if the data was exported. False if nothing was exported, because no data was found,
+        the data could not be loaded, or the format is unsupported or doesn't fit the data.
+        The reason is logged.
+
+    Raises:
+        Exception: Unexpected errors during the export are logged and re-raised.
     """
     # --- Determine Input Data ---
     # This logic assumes common scenarios, adjust as needed.
@@ -34,7 +42,7 @@ def run_export(input_path: Path, output_dir: Path, export_format: str):
             source_desc = analysis_summary_csv.name
         except Exception as e:
             log.error(f"Failed to load {analysis_summary_csv}: {e}. Cannot export from this source.")
-            return  # Or try other sources
+            return False  # Or try other sources
     elif input_path.is_file() and input_path.suffix == ".csv":
         log.info(f"Using provided CSV as data source: {input_path}")
         try:
@@ -42,7 +50,7 @@ def run_export(input_path: Path, output_dir: Path, export_format: str):
             source_desc = input_path.name
         except Exception as e:
             log.error(f"Failed to load {input_path}: {e}. Cannot export from this source.")
-            return
+            return False
     elif input_path.is_dir():
         # TODO: Implement logic to load data from multiple JSON or YAML files in the directory
         # Example: Load all *_analysis.yaml files into a list of dicts
@@ -57,7 +65,7 @@ def run_export(input_path: Path, output_dir: Path, export_format: str):
 
     if data_to_export is None:
         log.error(f"Could not find or load suitable data to export from: {input_path}")
-        return
+        return False
 
     log.info(f"Preparing to export data from '{source_desc}' to format '{export_format}'...")
 
@@ -70,7 +78,7 @@ def run_export(input_path: Path, output_dir: Path, export_format: str):
                 log.info(f"Data exported successfully to: {output_file}")
             else:
                 log.error("CSV export requires data loaded as a Pandas DataFrame (e.g., from analysis_summary.csv).")
-                return
+                return False
 
         elif export_format.lower() == "yaml":
             output_file = output_dir / "exported_data.yaml"
@@ -82,7 +90,7 @@ def run_export(input_path: Path, output_dir: Path, export_format: str):
                 export_payload = data_to_export
             else:
                 log.error(f"Cannot convert data of type {type(data_to_export)} directly to YAML.")
-                return
+                return False
 
             with open(output_file, "w") as f:
                 yaml.dump(export_payload, f, default_flow_style=False, sort_keys=False)
@@ -103,7 +111,7 @@ def run_export(input_path: Path, output_dir: Path, export_format: str):
                 export_payload = data_to_export  # Assume it's already suitable
             else:
                 log.error(f"Cannot convert data of type {type(data_to_export)} directly to JSON.")
-                return
+                return False
 
             with open(output_file, "w") as f:
                 json.dump(export_payload, f, indent=2)
@@ -115,10 +123,11 @@ def run_export(input_path: Path, output_dir: Path, export_format: str):
 
         else:
             log.error(f"Unsupported export format: '{export_format}'. Supported formats: csv, yaml, json_summary.")
-            return
+            return False
 
     except Exception as e:
         log.error(f"An error occurred during export (format: {export_format}): {e}", exc_info=True)
         raise  # Re-raise to be caught by CLI
 
     log.info("Export process completed.")
+    return True
