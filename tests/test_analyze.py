@@ -302,6 +302,28 @@ def test_run_analysis_directory_finds_fair_parse_output(tmp_path, sample_parsed_
     assert pd.read_csv(csv_file)["identifier"].tolist() == ["fair_parsed_dos_si_vasprun"]
 
 
+def test_run_analysis_directory_tree_with_repeated_file_names(tmp_path, sample_parsed_data):
+    """
+    Regression: calculations whose parsed files share a name (most VASP inputs are vasprun.xml)
+    each keep their own row and YAML. A file is identified by its path relative to the searched
+    directory, and its YAML goes to the same relative path under the output directory.
+    """
+    calc_dir = tmp_path / "calcs"
+    for example in ["Basic/example01", "Expert/example08"]:
+        (calc_dir / example).mkdir(parents=True)
+        (calc_dir / example / "fair_parsed_vasprun.json").write_text(json.dumps(sample_parsed_data), encoding="utf-8")
+    out_dir = tmp_path / "output"
+    out_dir.mkdir()
+
+    run_analysis(calc_dir, out_dir, None)
+
+    identifiers = ["Basic/example01/fair_parsed_vasprun", "Expert/example08/fair_parsed_vasprun"]
+    assert pd.read_csv(out_dir / "analysis_summary.csv")["identifier"].tolist() == identifiers
+    for identifier in identifiers:
+        with open(out_dir / f"{identifier}_analysis.yaml", "r") as f:
+            assert yaml.safe_load(f)["identifier"] == identifier
+
+
 def test_run_analysis_with_config(tmp_path, sample_parsed_data):
     """Test run_analysis with a custom YAML configuration file."""
     json_file = tmp_path / "vasp_parsed.json"

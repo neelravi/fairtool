@@ -25,6 +25,12 @@ def run_analysis(input_path: Path, output_dir: Path, config_path: Optional[Path]
     """
     Performs analysis on parsed data (JSON file or directory of JSON files).
 
+    A tree of calculations usually holds several `fair_parsed_vasprun.json` files, so each
+    file is identified by its path relative to the searched directory, without `.json`
+    (e.g., `Basic/example01/fair_parsed_vasprun`). A single input file keeps its stem. The
+    identifier labels the file's row in `analysis_summary.csv` and names its YAML,
+    `<output_dir>/<identifier>_analysis.yaml`.
+
     Args:
         input_path: Path to a parsed JSON file, or a directory searched recursively for
             the `fair_parsed_*.json` files written by `fair parse`.
@@ -44,8 +50,10 @@ def run_analysis(input_path: Path, output_dir: Path, config_path: Optional[Path]
 
     # --- Find input files ---
     if input_path.is_file() and input_path.suffix == ".json":
+        search_root = input_path.parent
         files_to_analyze = [input_path]
     elif input_path.is_dir():
+        search_root = input_path
         log.info(f"Searching for parsed JSON files ({PARSED_JSON_GLOB}) in: {input_path}")
         files_to_analyze = sorted(list(input_path.rglob(PARSED_JSON_GLOB)))
         if not files_to_analyze:
@@ -60,7 +68,9 @@ def run_analysis(input_path: Path, output_dir: Path, config_path: Optional[Path]
     analysis_results = []  # Store results from each file if creating a summary
 
     for file in files_to_analyze:
-        log.info(f"Analyzing data from: {file.name}")
+        relative_path = file.relative_to(search_root)
+        identifier = relative_path.with_suffix("").as_posix()
+        log.info(f"Analyzing data from: {relative_path}")
         try:
             with open(file, "r") as f:
                 parsed_data = json.load(f)
@@ -73,21 +83,23 @@ def run_analysis(input_path: Path, output_dir: Path, config_path: Optional[Path]
             # 3. Calculate derived quantities (e.g., formation energy if multiple calcs)
             # 4. Generate data for plots (DOS, band structure) - often done in visualize step too
 
-            result = perform_single_file_analysis(parsed_data, config, file.stem)
+            result = perform_single_file_analysis(parsed_data, config, identifier)
             analysis_results.append(result)
 
             # --- Save individual results (optional) ---
-            # Example: Save a small summary YAML for this specific file
-            individual_output_path = output_dir / f"{file.stem}_analysis.yaml"
+            # Example: Save a small summary YAML for this specific file, named after its
+            # identifier, e.g., <output_dir>/Basic/example01/fair_parsed_vasprun_analysis.yaml
+            individual_output_path = output_dir / f"{identifier}_analysis.yaml"
+            individual_output_path.parent.mkdir(parents=True, exist_ok=True)
             log.debug(f"Saving individual analysis summary to {individual_output_path}")
             with open(individual_output_path, "w") as f:
                 yaml.dump(result, f, default_flow_style=False)
 
         except json.JSONDecodeError:
-            log.error(f"Failed to decode JSON from {file.name}. Skipping.")
+            log.error(f"Failed to decode JSON from {relative_path}. Skipping.")
             continue
         except Exception as e:
-            log.error(f"Error analyzing {file.name}: {e}", exc_info=True)
+            log.error(f"Error analyzing {relative_path}: {e}", exc_info=True)
             # Decide whether to continue with other files or stop
 
     # --- Save Aggregate Results (optional) ---
@@ -116,7 +128,7 @@ def perform_single_file_analysis(data: dict, config: dict, identifier: str) -> d
     Args:
         data: The loaded JSON data from the parser.
         config: The analysis configuration dictionary.
-        identifier: A unique identifier for this calculation (e.g., filename stem).
+        identifier: A unique identifier for this calculation (see `run_analysis`).
 
     Returns:
         A dictionary with the identifier, `total_energy_eV`, `band_gap_eV` and `converged`.
