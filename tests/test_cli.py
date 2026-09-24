@@ -29,6 +29,8 @@ def mock_all_runners():
     ):
         # Make run_parser return False (not skipped)
         mock_parse.return_value = False
+        # Make run_export return True (something was exported)
+        mock_export.return_value = True
 
         yield {
             "parse": mock_parse,
@@ -59,6 +61,15 @@ def setup_test_files(tmp_path):
     (tmp_path / "fair_parsed_data.json").write_text("{}")
     (tmp_path / "config.yml").write_text("config: true")
     return tmp_path
+
+
+@pytest.fixture
+def analyzed_calc_dir(tmp_path):
+    """A calc/ directory holding the analysis_summary.csv that `fair analyze calc` writes."""
+    calc_dir = tmp_path / "calc"
+    calc_dir.mkdir()
+    (calc_dir / "analysis_summary.csv").write_text("identifier,total_energy_eV\ncalc_01,-120.5\n", encoding="utf-8")
+    return calc_dir
 
 
 # --- Existing Tests ---
@@ -355,6 +366,44 @@ def test_cli_analyze_error_handling(mock_all_runners, setup_test_files):
     assert result.exit_code == 1
 
 
+def test_cli_export_exits_zero_when_exported(analyzed_calc_dir, tmp_path):
+    """The real export writes exported_data.csv and exits 0."""
+    export_dir = tmp_path / "exported"
+
+    result = runner.invoke(app, ["export", str(analyzed_calc_dir), "--output", str(export_dir)])
+    assert result.exit_code == 0
+    assert "calc_01" in (export_dir / "exported_data.csv").read_text(encoding="utf-8")
+
+
+def test_cli_export_no_data_exits_nonzero(tmp_path, caplog):
+    """
+    Regression: `fair export calc` exits 1 when calc/ has no analysis_summary.csv,
+    so that `fair export calc && upload exported_data.csv` stops instead of uploading nothing.
+    """
+    import logging
+
+    caplog.set_level(logging.INFO)
+    calc_dir = tmp_path / "calc"
+    calc_dir.mkdir()
+    export_dir = tmp_path / "exported"
+
+    result = runner.invoke(app, ["export", str(calc_dir), "--output", str(export_dir)])
+    assert result.exit_code == 1
+    assert not any(export_dir.iterdir())
+    assert "Could not find or load suitable data to export" in caplog.text
+    assert "Export finished." not in caplog.text
+
+
+def test_cli_export_unsupported_format_exits_nonzero(analyzed_calc_dir, tmp_path, caplog):
+    """`fair export calc -fmt xml` exits 1 without writing anything."""
+    export_dir = tmp_path / "exported"
+
+    result = runner.invoke(app, ["export", str(analyzed_calc_dir), "--output", str(export_dir), "-fmt", "xml"])
+    assert result.exit_code == 1
+    assert not any(export_dir.iterdir())
+    assert "Unsupported export format: 'xml'" in caplog.text
+
+
 def test_cli_export_error_handling(mock_all_runners, setup_test_files):
     """Test export command catches backend exceptions and exits with code 1."""
     mock_all_runners["export"].side_effect = RuntimeError("Export error")
@@ -591,3 +640,20 @@ def test_cli_all_command_workflow_and_errors(setup_test_files, mock_all_runners,
     (out_dir / "fair_parsed_test.json").write_text("{}", encoding="utf-8")
     res_happy = runner.invoke(app, ["all", str(setup_test_files / "vasprun.xml"), "--output", str(out_dir), "--yes"])
     assert res_happy.exit_code == 0
+
+
+def test_cli_all_aborts_when_nothing_exported(setup_test_files, mock_all_runners, tmp_path, caplog):
+    """`fair all` exits 1 and stops at the export step when it exports nothing (e.g., -fmt xml)."""
+    import logging
+
+    caplog.set_level(logging.INFO)
+    out_dir = tmp_path / "all_out"
+    mock_all_runners["export"].return_value = False
+
+    res = runner.invoke(
+        app, ["all", str(setup_test_files / "vasprun.xml"), "--output", str(out_dir), "--yes", "-fmt", "xml"]
+    )
+    assert res.exit_code == 1
+    mock_all_runners["export"].assert_called_once_with(out_dir, out_dir, "xml")
+    # No later step runs, and the workflow doesn't report success
+    assert caplog.records[-1].getMessage() == "Nothing was exported. Aborting workflow."

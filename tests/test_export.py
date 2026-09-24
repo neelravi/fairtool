@@ -26,7 +26,7 @@ def test_run_export_csv_from_file(sample_csv_data, tmp_path):
     out_dir = tmp_path / "out_csv"
     out_dir.mkdir()
 
-    run_export(sample_csv_data["csv_file"], out_dir, "csv")
+    assert run_export(sample_csv_data["csv_file"], out_dir, "csv") is True
     exported_file = out_dir / "exported_data.csv"
     assert exported_file.exists()
 
@@ -40,7 +40,7 @@ def test_run_export_csv_from_directory(sample_csv_data, tmp_path):
     out_dir = tmp_path / "out_csv_dir"
     out_dir.mkdir()
 
-    run_export(sample_csv_data["dir"], out_dir, "csv")
+    assert run_export(sample_csv_data["dir"], out_dir, "csv") is True
     assert (out_dir / "exported_data.csv").exists()
 
 
@@ -49,7 +49,7 @@ def test_run_export_yaml_from_dataframe(sample_csv_data, tmp_path):
     out_dir = tmp_path / "out_yaml"
     out_dir.mkdir()
 
-    run_export(sample_csv_data["csv_file"], out_dir, "yaml")
+    assert run_export(sample_csv_data["csv_file"], out_dir, "yaml") is True
     exported_file = out_dir / "exported_data.yaml"
     assert exported_file.exists()
 
@@ -65,7 +65,7 @@ def test_run_export_json_summary_with_identifier(sample_csv_data, tmp_path):
     out_dir = tmp_path / "out_json"
     out_dir.mkdir()
 
-    run_export(sample_csv_data["csv_file"], out_dir, "json_summary")
+    assert run_export(sample_csv_data["csv_file"], out_dir, "json_summary") is True
     exported_file = out_dir / "exported_summary.json"
     assert exported_file.exists()
 
@@ -84,7 +84,7 @@ def test_run_export_json_summary_without_identifier(tmp_path):
     out_dir = tmp_path / "out_json_noid"
     out_dir.mkdir()
 
-    run_export(csv_file, out_dir, "json_summary")
+    assert run_export(csv_file, out_dir, "json_summary") is True
     exported_file = out_dir / "exported_summary.json"
     assert exported_file.exists()
     with open(exported_file, "r") as f:
@@ -97,8 +97,9 @@ def test_run_export_unsupported_format(sample_csv_data, tmp_path):
     out_dir = tmp_path / "out_unsupported"
     out_dir.mkdir()
 
-    run_export(sample_csv_data["csv_file"], out_dir, "unknown_format")
+    assert run_export(sample_csv_data["csv_file"], out_dir, "unknown_format") is False
     assert not (out_dir / "exported_data.unknown_format").exists()
+    assert not any(out_dir.iterdir())
 
 
 def test_run_export_missing_source(tmp_path):
@@ -108,8 +109,20 @@ def test_run_export_missing_source(tmp_path):
     out_dir = tmp_path / "out_missing"
     out_dir.mkdir()
 
-    run_export(missing_dir, out_dir, "csv")
+    assert run_export(missing_dir, out_dir, "csv") is False
     assert not (out_dir / "exported_data.csv").exists()
+    assert not any(out_dir.iterdir())
+
+
+def test_run_export_non_csv_file(tmp_path):
+    """Test that a file input other than a CSV (e.g., parsed JSON) has nothing to export."""
+    json_file = tmp_path / "fair_parsed_calc.json"
+    json_file.write_text("{}", encoding="utf-8")
+    out_dir = tmp_path / "out_non_csv"
+    out_dir.mkdir()
+
+    assert run_export(json_file, out_dir, "csv") is False
+    assert not any(out_dir.iterdir())
 
 
 def test_run_export_corrupted_csv(tmp_path):
@@ -119,7 +132,7 @@ def test_run_export_corrupted_csv(tmp_path):
     out_dir = tmp_path / "out_bad"
     out_dir.mkdir()
 
-    run_export(bad_csv, out_dir, "csv")
+    assert run_export(bad_csv, out_dir, "csv") is False
     assert not (out_dir / "exported_data.csv").exists()
 
 
@@ -132,7 +145,7 @@ def test_run_export_corrupted_csv_in_directory(tmp_path):
     out_dir = tmp_path / "out_bad_dir"
     out_dir.mkdir()
 
-    run_export(bad_dir, out_dir, "csv")
+    assert run_export(bad_dir, out_dir, "csv") is False
     assert not (out_dir / "exported_data.csv").exists()
 
 
@@ -143,7 +156,7 @@ def test_run_export_csv_non_dataframe(sample_csv_data, tmp_path, monkeypatch):
 
     # Monkeypatch pd.read_csv to return a dict
     monkeypatch.setattr(pd, "read_csv", lambda *args, **kwargs: {"not": "a dataframe"})
-    run_export(sample_csv_data["csv_file"], out_dir, "csv")
+    assert run_export(sample_csv_data["csv_file"], out_dir, "csv") is False
     assert not (out_dir / "exported_data.csv").exists()
 
 
@@ -153,10 +166,10 @@ def test_run_export_yaml_and_json_from_list_and_dict(sample_csv_data, tmp_path, 
     out_dir.mkdir()
 
     monkeypatch.setattr(pd, "read_csv", lambda *args, **kwargs: [{"item": 1}, {"item": 2}])
-    run_export(sample_csv_data["csv_file"], out_dir, "yaml")
+    assert run_export(sample_csv_data["csv_file"], out_dir, "yaml") is True
     assert (out_dir / "exported_data.yaml").exists()
 
-    run_export(sample_csv_data["csv_file"], out_dir, "json_summary")
+    assert run_export(sample_csv_data["csv_file"], out_dir, "json_summary") is True
     assert (out_dir / "exported_summary.json").exists()
 
 
@@ -166,10 +179,10 @@ def test_run_export_unsupported_data_types(sample_csv_data, tmp_path, monkeypatc
     out_dir.mkdir()
 
     monkeypatch.setattr(pd, "read_csv", lambda *args, **kwargs: 12345)
-    run_export(sample_csv_data["csv_file"], out_dir, "yaml")
+    assert run_export(sample_csv_data["csv_file"], out_dir, "yaml") is False
     assert not (out_dir / "exported_data.yaml").exists()
 
-    run_export(sample_csv_data["csv_file"], out_dir, "json_summary")
+    assert run_export(sample_csv_data["csv_file"], out_dir, "json_summary") is False
     assert not (out_dir / "exported_summary.json").exists()
 
 

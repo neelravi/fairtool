@@ -478,9 +478,14 @@ def export(
 
     try:
         log.info("Export started.")
-        export_module.run_export(input_path, output_dir, format)
+        exported = export_module.run_export(input_path, output_dir, format)
     except Exception as e:
         log.error(f"Export failed for {input_path} (format: {format}): {e}", exc_info=True)
+        raise typer.Exit(code=1)
+
+    # run_export has already logged why nothing was exported
+    if not exported:
+        log.error(f"Export failed for {input_path} (format: {format}): nothing was exported.")
         raise typer.Exit(code=1)
 
     log.info("Export finished.")
@@ -725,9 +730,14 @@ def all(
     # --- Step 4: Export ---
     try:
         log.info("--- STEP 4/4: Export ---")
-        export_module.run_export(output_dir, output_dir, export_format)
+        exported = export_module.run_export(output_dir, output_dir, export_format)
     except Exception as e:
         log.error(f"Export step failed: {e}", exc_info=True)
+        raise typer.Exit(code=1)
+
+    # run_export has already logged why nothing was exported
+    if not exported:
+        log.error("Nothing was exported. Aborting workflow.")
         raise typer.Exit(code=1)
 
     log.info("--- Full FAIR Workflow Completed Successfully ---")
