@@ -302,14 +302,15 @@ def analyze(
         ),
     ],
     output_dir: Annotated[
-        Path,
+        Optional[Path],
         typer.Option(
             "--output",
             "-o",
-            help="Directory to save analysis results (e.g., plots, summary tables).",
+            help="Directory to save analysis results (e.g., plots, summary tables). "
+            "If not given, results are saved in the input directory, or next to the input file.",
             resolve_path=True,
         ),
-    ] = Path("."),
+    ] = None,
     config: Annotated[
         Path,
         typer.Option(
@@ -327,6 +328,10 @@ def analyze(
     Perform analysis on parsed calculation data. Get derived properties.
     """
     log.info(f"Starting analysis process for: {input_path}")
+    # If no --output given, save next to the input, like parse and summarize do,
+    # so that `fair export <input_path>` finds analysis_summary.csv
+    if output_dir is None:
+        output_dir = input_path if input_path.is_dir() else input_path.parent
     output_dir.mkdir(parents=True, exist_ok=True)
     log.info(f"Analysis output will be saved to: {output_dir}")
     if config:
