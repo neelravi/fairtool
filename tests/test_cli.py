@@ -532,7 +532,7 @@ def test_cli_visualize_build_and_serve_modes(setup_test_files, monkeypatch):
     assert res_serve_err.exit_code == 1
 
 
-def test_cli_visualize_build_failure_exits_nonzero(mock_all_runners, tmp_path, monkeypatch, caplog):
+def test_cli_visualize_build_failure_exits_nonzero(tmp_path, monkeypatch, caplog):
     """A failed mkdocs build makes `visualize --build` exit non-zero instead of reporting success."""
     docs_dir = tmp_path / "calcs"
     docs_dir.mkdir()
