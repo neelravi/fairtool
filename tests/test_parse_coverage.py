@@ -1,4 +1,5 @@
 import json
+import logging
 import subprocess
 from unittest.mock import MagicMock, patch
 
@@ -31,6 +32,7 @@ def test_create_structure_json_conventional_topology(tmp_path):
     full_data = {
         "results": {
             "material": {
+                "structural_type": "bulk",
                 "topology": [
                     {
                         "label": "conventional cell",
@@ -40,7 +42,7 @@ def test_create_structure_json_conventional_topology(tmp_path):
                             "labels": ["Al"],
                         },
                     }
-                ]
+                ],
             }
         }
     }
@@ -77,6 +79,57 @@ def test_create_structure_json_fallback_primitive(tmp_path):
     assert data["formula"] == "Fe"
 
 
+def test_create_structure_json_ignores_conventional_cell_of_non_bulk_material(tmp_path, caplog):
+    """
+    In example08, a graphene sheet with adsorbed molecules, NOMAD's topology holds the conventional
+    cell of the graphene subsystem: 2 C atoms, with a zero third lattice vector. The structure
+    comes from the calculated system instead, without logging an error.
+    """
+    full_data = {
+        "results": {
+            "material": {
+                "structural_type": "unavailable",
+                "topology": [
+                    {"label": "original"},
+                    {"label": "subsystem", "structural_type": "2D"},
+                    {
+                        "label": "conventional cell",
+                        "structural_type": "2D",
+                        "atoms": {
+                            "lattice_vectors": [[2.4813e-10, 0, 0], [-1.2407e-10, 2.1489e-10, 0], [0, 0, 0]],
+                            "positions": [[1.2407e-10, 0.7163e-10, 0], [0, 1.4326e-10, 0]],
+                            "labels": ["C", "C"],
+                            "periodic": [True, True, False],
+                        },
+                    },
+                ],
+            }
+        },
+        "run": [
+            {
+                "system": [
+                    {
+                        "atoms": {
+                            "lattice_vectors": [[8e-10, 0, 0], [0, 9e-10, 0], [0, 0, 10e-10]],
+                            "positions": [
+                                [1.0e-10, 1.2e-10, 5.0e-10],
+                                [2.2e-10, 1.9e-10, 5.1e-10],
+                                [3.1e-10, 3.7e-10, 6.4e-10],
+                            ],
+                            "labels": ["C", "C", "H"],
+                        }
+                    }
+                ]
+            }
+        ],
+    }
+    _create_structure_json(full_data, tmp_path, "non_bulk_calc")
+    data = json.loads((tmp_path / "fair-structure.json").read_text(encoding="utf-8"))
+    assert data["formula"] == "HC2"
+    assert len(data["sites"]) == 3
+    assert not [record for record in caplog.records if record.levelno >= logging.ERROR]
+
+
 def test_create_structure_json_no_structure(tmp_path):
     """Test _create_structure_json skips creation when no structure can be extracted."""
     full_data = {"results": {}}
@@ -89,6 +142,7 @@ def test_create_structure_json_write_failure(tmp_path, monkeypatch):
     full_data = {
         "results": {
             "material": {
+                "structural_type": "bulk",
                 "topology": [
                     {
                         "label": "conventional cell",
@@ -98,7 +152,7 @@ def test_create_structure_json_write_failure(tmp_path, monkeypatch):
                             "labels": ["Al"],
                         },
                     }
-                ]
+                ],
             }
         }
     }

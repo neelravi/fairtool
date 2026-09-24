@@ -84,7 +84,7 @@
     | Dimensionality | **3** |
     | Sampling method | **Line-path** |
     | Number of points | **20** |
-    | Grid | **20** |
+    | Grid | **[20]** |
 
 </div>
 

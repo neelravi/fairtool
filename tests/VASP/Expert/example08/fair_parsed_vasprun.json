@@ -3,11 +3,866 @@
     {
       "program": {
         "name": "VASP",
-        "version": "5.4.4.18Apr17-6-g9f103f2a35 (build Sep 16 2020 16:27:35) complex parallel LinuxIFC",
-        "compilation_datetime": 1680003096.0
+        "version": "5.4.4 18Apr17-6-g9f103f2a35 complex parallel LinuxIFC",
+        "compilation_datetime": 1600273655.0
+      },
+      "time_run": {
+        "date_start": 1680003096.0
       },
       "method": [
         {
+          "x_vasp_incar_in": {
+            "ISTART": 0,
+            "PREC": "accurate",
+            "IALGO": 48,
+            "NELM": [
+              200,
+              200
+            ],
+            "EDIFF": 1e-05,
+            "EDIFFG": -0.01,
+            "NSW": 0,
+            "ISYM": 2,
+            "ENCUT": 350.0,
+            "LREAL": "Auto",
+            "ISMEAR": -5,
+            "LCHARG": true,
+            "LAECHG": true,
+            "KPOINT_BSE": [
+              -1,
+              0,
+              0,
+              0
+            ]
+          },
+          "x_vasp_incar_out": {
+            "SYSTEM": [
+              "unknown",
+              "system"
+            ],
+            "LCOMPAT": false,
+            "PREC": "accura",
+            "ENMAX": 350.0,
+            "ENAUG": 644.873,
+            "EDIFF": 1e-05,
+            "IALGO": 48,
+            "IWAVPR": 10,
+            "NBANDS": 1536,
+            "NELECT": 1842.0,
+            "TURBO": 0,
+            "IRESTART": 0,
+            "NREBOOT": 0,
+            "NMIN": 0,
+            "EREF": 0.0,
+            "ISMEAR": -5,
+            "SIGMA": 0.2,
+            "KSPACING": 0.5,
+            "KGAMMA": true,
+            "LREAL": true,
+            "LMAXPAW": -100,
+            "LMAXMIX": 2,
+            "NLSPLINE": false,
+            "ISTART": 0,
+            "ICHARG": 2,
+            "INIWAV": 1,
+            "ISPIN": 1,
+            "LNONCOLLINEAR": false,
+            "NUPDOWN": -1.0,
+            "LSORBIT": false,
+            "LSPIRAL": false,
+            "LZEROZ": false,
+            "LASPH": false,
+            "LMETAGGA": false,
+            "NELM": [
+              200,
+              200
+            ],
+            "NELMDL": -12,
+            "NELMIN": 2,
+            "ENINI": 350.0,
+            "LDIAG": true,
+            "LSUBROT": false,
+            "WEIMIN": 0.0,
+            "EBREAK": 0.0,
+            "DEPER": 0.3,
+            "NRMM": 4,
+            "TIME": 0.4,
+            "AMIX": 0.4,
+            "BMIX": 1.0,
+            "AMIN": 0.1,
+            "AMIX_MAG": 1.6,
+            "BMIX_MAG": 1.0,
+            "IMIX": 4,
+            "MIXFIRST": false,
+            "MAXMIX": -45,
+            "WC": 100.0,
+            "INIMIX": 1,
+            "MIXPRE": 1,
+            "MREMOVE": 5,
+            "LDIPOL": false,
+            "LMONO": false,
+            "IDIPOL": 0,
+            "EPSILON": 1.0,
+            "EFIELD": 0.0,
+            "NGX": 192,
+            "NGY": 192,
+            "NGZ": 180,
+            "NGXF": 384,
+            "NGYF": 384,
+            "NGZF": 360,
+            "ADDGRID": false,
+            "NSW": 0,
+            "IBRION": -1,
+            "MDALGO": 0,
+            "ISIF": 2,
+            "PSTRESS": 0.0,
+            "EDIFFG": -0.01,
+            "NFREE": 0,
+            "POTIM": 0.5,
+            "SMASS": -3.0,
+            "SCALEE": 1.0,
+            "TEBEG": 0.0001,
+            "TEEND": 0.0001,
+            "NBLOCK": 1,
+            "KBLOCK": 1,
+            "NPACO": 256,
+            "APACO": 16.0,
+            "ISYM": 2,
+            "SYMPREC": 1e-05,
+            "LORBIT": 0,
+            "NEDOS": 301,
+            "EMIN": 10.0,
+            "EMAX": -10.0,
+            "EFERMI": 0.0,
+            "NWRITE": 2,
+            "LWAVE": true,
+            "LDOWNSAMPLE": false,
+            "LCHARG": true,
+            "LPARD": false,
+            "LVTOT": false,
+            "LVHAR": false,
+            "LELF": false,
+            "LOPTICS": false,
+            "NPAR": 512,
+            "NSIM": 4,
+            "NBLK": -1,
+            "LPLANE": true,
+            "LSCALAPACK": true,
+            "LSCAAWARE": true,
+            "LSCALU": false,
+            "LASYNC": false,
+            "LORBITALREAL": false,
+            "IDIOT": 3,
+            "ISPECIAL": 0,
+            "LMUSIC": false,
+            "LCORR": true,
+            "GGA_COMPAT": true,
+            "LBERRY": false,
+            "ICORELEVEL": 0,
+            "LDAU": false,
+            "I_CONSTRAINED_M": 0,
+            "GGA": "--",
+            "VOSKOWN": 0,
+            "LHFCALC": false,
+            "PRECFOCK": [],
+            "LSYMGRAD": false,
+            "LHFONE": false,
+            "LRHFCALC": false,
+            "LTHOMAS": false,
+            "LMODELHF": false,
+            "ENCUT4O": -1.0,
+            "EXXOEP": 0,
+            "FOURORBIT": 0,
+            "AEXX": 0.0,
+            "HFALPHA": 0.0,
+            "MCALPHA": 0.0,
+            "ALDAX": 1.0,
+            "AGGAX": 1.0,
+            "ALDAC": 1.0,
+            "AGGAC": 1.0,
+            "NKREDX": 1,
+            "NKREDY": 1,
+            "NKREDZ": 1,
+            "SHIFTRED": false,
+            "ODDONLY": false,
+            "EVENONLY": false,
+            "LMAXFOCK": 0,
+            "NMAXFOCKAE": 0,
+            "LFOCKAEDFT": false,
+            "HFSCREEN": 0.0,
+            "HFSCREENC": 0.0,
+            "NBANDSGWLOW": 0,
+            "LUSE_VDW": false,
+            "Zab_VDW": -0.8491,
+            "PARAM1": 0.1234,
+            "PARAM2": 1.0,
+            "PARAM3": 0.0,
+            "MODEL_GW": 0,
+            "MODEL_EPS0": 32.64822165,
+            "MODEL_ALPHA": 1.0,
+            "LEPSILON": false,
+            "LRPA": false,
+            "LNABLA": false,
+            "LVEL": false,
+            "KINTER": 0,
+            "CSHIFT": [
+              0.1,
+              -0.1
+            ],
+            "OMEGAMAX": [
+              -1.0,
+              -30.0
+            ],
+            "DEG_THRESHOLD": 0.002,
+            "RTIME": -0.1,
+            "WPLASMAI": 0.0,
+            "NUCIND": false,
+            "LNICSALL": true,
+            "ORBITALMAG": false,
+            "LMAGBLOCH": false,
+            "LCHIMAG": false,
+            "LGAUGE": true,
+            "MAGATOM": 0,
+            "LADDER": false,
+            "LRPAFORCE": false,
+            "LFXC": false,
+            "LHARTREE": true,
+            "IBSE": 0,
+            "LTCTE": false,
+            "LTETE": false,
+            "LTRIPLET": false,
+            "LFXCEPS": false,
+            "LFXHEG": false,
+            "NATURALO": 2,
+            "L2ORDER": false,
+            "LMP2LT": false,
+            "LUSEW": false,
+            "ENCUTGW": -2.0,
+            "ENCUTGWSOFT": -2.0,
+            "ENCUTLF": -1.0,
+            "LMAXMP2": -1,
+            "SCISSOR": 0.0,
+            "NOMEGA": 0,
+            "NOMEGAR": 0,
+            "NBANDSGW": -1,
+            "NBANDSO": -1,
+            "NBANDSV": -1,
+            "NELMHF": 1,
+            "DIM": 3,
+            "ANTIRES": 0,
+            "OMEGAMIN": -30.0,
+            "OMEGATL": -200.0,
+            "OMEGAGRID": 140,
+            "SELFENERGY": false,
+            "LSPECTRAL": false,
+            "LSPECTRALGW": false,
+            "LSINGLES": false,
+            "LFERMIGW": false,
+            "ODDONLYGW": false,
+            "EVENONLYGW": false,
+            "NKREDLFX": 1,
+            "NKREDLFY": 1,
+            "NKREDLFZ": 1,
+            "MAXMEM": 2800,
+            "TELESCOPE": 0,
+            "TAUPAR": 1,
+            "OMEGAPAR": -1,
+            "LAMBDA": 1.0,
+            "OFIELD_KAPPA": 0.0,
+            "OFIELD_Q6_NEAR": 0.0,
+            "OFIELD_Q6_FAR": 0.0,
+            "OFIELD_A": 0.0,
+            "ROPT": [
+              -0.00025,
+              -0.00025,
+              -0.00025,
+              -0.00025
+            ],
+            "MAGMOM": [
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SAXIS": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "QSPIRAL": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "DIPOL": [
+              -100.0,
+              -100.0,
+              -100.0
+            ],
+            "RWIGS": [
+              -1.0,
+              -1.0,
+              -1.0,
+              -1.0
+            ],
+            "STM": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "POMASS": [
+              1.0,
+              16.0,
+              14.001,
+              12.011
+            ],
+            "DARWINR": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "DARWINV": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "DFIELD": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "WPLASMA": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "MAGPOS": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "MAGDIPOL": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "AVECCONST": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "KPOINT": [
+              -1,
+              0,
+              0,
+              0
+            ],
+            "OFIELD_K": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "KPOINT_BSE": [
+              -1,
+              0,
+              0,
+              0
+            ]
+          },
           "dft": {
             "xc_functional": {
               "name": "GGA_C_PBE+GGA_X_PBE",
@@ -35,109 +890,49 @@
             "points": {
               "re": [
                 [
-                  [
-                    [
-                      0.0
-                    ],
-                    [
-                      0.5
-                    ],
-                    [
-                      1.0
-                    ]
-                  ],
-                  [
-                    [
-                      0.0
-                    ],
-                    [
-                      0.5
-                    ],
-                    [
-                      1.0
-                    ]
-                  ],
-                  [
-                    [
-                      0.0
-                    ],
-                    [
-                      0.5
-                    ],
-                    [
-                      1.0
-                    ]
-                  ]
+                  0.0,
+                  0.0,
+                  0.0
                 ],
                 [
-                  [
-                    [
-                      0.0
-                    ],
-                    [
-                      0.0
-                    ],
-                    [
-                      0.0
-                    ]
-                  ],
-                  [
-                    [
-                      0.5
-                    ],
-                    [
-                      0.5
-                    ],
-                    [
-                      0.5
-                    ]
-                  ],
-                  [
-                    [
-                      1.0
-                    ],
-                    [
-                      1.0
-                    ],
-                    [
-                      1.0
-                    ]
-                  ]
+                  0.5,
+                  0.0,
+                  0.0
                 ],
                 [
-                  [
-                    [
-                      0.0
-                    ],
-                    [
-                      0.0
-                    ],
-                    [
-                      0.0
-                    ]
-                  ],
-                  [
-                    [
-                      0.0
-                    ],
-                    [
-                      0.0
-                    ],
-                    [
-                      0.0
-                    ]
-                  ],
-                  [
-                    [
-                      0.0
-                    ],
-                    [
-                      0.0
-                    ],
-                    [
-                      0.0
-                    ]
-                  ]
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                [
+                  0.0,
+                  0.5,
+                  0.0
+                ],
+                [
+                  0.5,
+                  0.5,
+                  0.0
+                ],
+                [
+                  1.0,
+                  0.5,
+                  0.0
+                ],
+                [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                [
+                  0.5,
+                  1.0,
+                  0.0
+                ],
+                [
+                  1.0,
+                  1.0,
+                  0.0
                 ]
               ]
             },
@@ -147,9 +942,180 @@
               0.22222222,
               0.22222222,
               0.22222222
+            ],
+            "x_vasp_tetrahedrons_list": [
+              [
+                2,
+                1,
+                2,
+                2,
+                3
+              ],
+              [
+                2,
+                2,
+                2,
+                3,
+                4
+              ],
+              [
+                2,
+                2,
+                3,
+                4,
+                4
+              ],
+              [
+                2,
+                1,
+                1,
+                2,
+                3
+              ],
+              [
+                2,
+                1,
+                2,
+                3,
+                3
+              ],
+              [
+                2,
+                2,
+                3,
+                3,
+                4
+              ],
+              [
+                4,
+                2,
+                2,
+                2,
+                4
+              ],
+              [
+                2,
+                2,
+                2,
+                4,
+                5
+              ],
+              [
+                2,
+                2,
+                4,
+                5,
+                5
+              ],
+              [
+                2,
+                2,
+                2,
+                4,
+                4
+              ],
+              [
+                2,
+                2,
+                4,
+                4,
+                5
+              ],
+              [
+                2,
+                1,
+                1,
+                2,
+                5
+              ],
+              [
+                2,
+                1,
+                1,
+                3,
+                5
+              ],
+              [
+                2,
+                1,
+                3,
+                3,
+                5
+              ],
+              [
+                2,
+                1,
+                2,
+                2,
+                5
+              ],
+              [
+                2,
+                1,
+                2,
+                5,
+                5
+              ],
+              [
+                2,
+                1,
+                3,
+                5,
+                5
+              ],
+              [
+                2,
+                3,
+                3,
+                4,
+                4
+              ],
+              [
+                2,
+                3,
+                4,
+                4,
+                5
+              ],
+              [
+                2,
+                3,
+                4,
+                5,
+                5
+              ],
+              [
+                4,
+                3,
+                3,
+                3,
+                4
+              ],
+              [
+                2,
+                3,
+                3,
+                4,
+                5
+              ],
+              [
+                4,
+                4,
+                5,
+                5,
+                5
+              ],
+              [
+                2,
+                4,
+                4,
+                5,
+                5
+              ]
             ]
           },
           "electronic": {
+            "n_electrons": 1842.0,
             "method": "DFT"
           },
           "scf": {
@@ -186,14 +1152,16 @@
                   "scope": [
                     "valence"
                   ],
-                  "cutoff": 5.607618219e-17
+                  "cutoff": 5.607618219e-17,
+                  "frozen_core": true
                 },
                 {
                   "type": "plane waves",
                   "scope": [
                     "augmentation"
                   ],
-                  "cutoff": 1.033200452497482e-16
+                  "cutoff": 1.033200452497482e-16,
+                  "frozen_core": true
                 }
               ]
             }
@@ -203,7 +1171,7 @@
       "system": [
         {
           "type": "unavailable",
-          "configuration_raw_gid": "FTVtz8k2qDnZqpp8QSso-Wm9JMb0",
+          "configuration_raw_gid": "7CZIHxh4M70WY7IAheo9q9eMjZgs",
           "is_representative": true,
           "chemical_composition": "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHOOOOOOOONNNNNNNNCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
           "chemical_composition_hill": "C428H42N8O8",
@@ -1387,7 +2355,7 @@
                 5.9952772169235e-10
               ],
               [
-                2.952953410852731e-09,
+                2.9529534108527305e-09,
                 1.6480159887214e-09,
                 5.9335372347438e-10
               ],
@@ -1508,7 +2476,7 @@
               ],
               [
                 2.0847241908220003e-11,
-                3.3932543247572005e-10,
+                3.3932543247572e-10,
                 9.110339954172e-10
               ],
               [
@@ -1652,7 +2620,7 @@
                 9.1859640471768e-10
               ],
               [
-                2.0633500350510006e-11,
+                2.0633500350510002e-11,
                 1.1987952785961102e-09,
                 9.238841830957499e-10
               ],
@@ -1817,7 +2785,7 @@
                 9.4444448338143e-10
               ],
               [
-                1.5091890335605002e-09,
+                1.5091890335605004e-09,
                 3.3934126630850004e-10,
                 9.349619310945001e-10
               ],
@@ -1853,7 +2821,7 @@
               ],
               [
                 2.6252379721469003e-09,
-                2.70144771306883e-09,
+                2.7014477130688305e-09,
                 9.254793788075701e-10
               ],
               [
@@ -3636,19 +4604,19 @@
             ],
             "lattice_vectors_reciprocal": [
               [
-                2110313903.6060617,
-                548795.6169391911,
-                -6493551.579681492
+                2110313903.606061,
+                548795.6169391072,
+                -6493551.579681773
               ],
               [
-                -4.681337853654911e-08,
-                2089721163.7740726,
-                14372440.130429516
+                -5.0212324912130795e-08,
+                2089721163.7740734,
+                14372440.130429046
               ],
               [
-                -6.085739209751385e-07,
-                5.149471639020401e-07,
-                2126961626.5492017
+                -1.3485817771213417e-07,
+                4.2533729038887726e-07,
+                2126961626.5492015
               ]
             ],
             "periodic": [
@@ -3663,6 +4631,8 @@
         {
           "system_ref": "#/run/0/system/0",
           "method_ref": "#/run/0/method/0",
+          "time_calculation": 5621.82,
+          "time_physical": 5621.82,
           "energy": {
             "fermi": -4.7723803081346065e-19,
             "highest_occupied": -4.772403539695799e-19,
@@ -6134,18 +7104,6 @@
               ]
             }
           },
-          "band_gap": [
-            {
-              "index": 0,
-              "value": 0.0,
-              "energy_highest_occupied": -4.803005113405199e-19,
-              "energy_lowest_unoccupied": -4.803005113405199e-19,
-              "provenance": {
-                "label": "dos",
-                "dos": "#/run/0/calculation/0/dos_electronic/0/total/0"
-              }
-            }
-          ],
           "dos_electronic": [
             {
               "energies": [
@@ -6452,17 +7410,8 @@
                 1.10050308636192e-18
               ],
               "energy_fermi": -4.7723803081346065e-19,
-              "band_gap": [
-                {
-                  "index": 0,
-                  "value": 0.0,
-                  "energy_highest_occupied": -4.803005113405199e-19,
-                  "energy_lowest_unoccupied": -4.803005113405199e-19
-                }
-              ],
               "total": [
                 {
-                  "normalization_factor": 0.0003663003663003663,
                   "value": [
                     0.0,
                     0.0,
@@ -7070,17 +8019,7 @@
                     3072.0
                   ]
                 }
-              ],
-              "fingerprint": {
-                "bins": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe000fffff800000000fffe0000000000ffffffffffc000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000ffffc000000000fff80000000000ff000000000000f0000000000000c0000000000000e0000000000000fc000000000000ffe00000000000ffff8000000000fffffffffffff0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-                "indices": [
-                  0,
-                  145
-                ],
-                "stepsize": 0.05,
-                "filling_factor": 0.9323891625615763,
-                "grid_id": "dg_cut:56:-2.0:7.0:(-10.0, 5.0)"
-              }
+              ]
             }
           ],
           "eigenvalues": [
@@ -22512,6 +23451,8 @@
           ],
           "scf_iteration": [
             {
+              "time_calculation": 83.63,
+              "time_physical": 83.63,
               "energy": {
                 "total": {
                   "value": 3.770954332872365e-15
@@ -22531,6 +23472,8 @@
               }
             },
             {
+              "time_calculation": 83.53,
+              "time_physical": 167.16,
               "energy": {
                 "total": {
                   "value": 1.499692096881024e-15
@@ -22550,6 +23493,8 @@
               }
             },
             {
+              "time_calculation": 82.71,
+              "time_physical": 249.87,
               "energy": {
                 "total": {
                   "value": 6.788435485541704e-16
@@ -22563,6 +23508,8 @@
               }
             },
             {
+              "time_calculation": 83.56,
+              "time_physical": 333.43,
               "energy": {
                 "total": {
                   "value": -2.2463436662569157e-16
@@ -22576,6 +23523,8 @@
               }
             },
             {
+              "time_calculation": 83.51,
+              "time_physical": 416.94,
               "energy": {
                 "total": {
                   "value": -5.89331957056842e-16
@@ -22589,6 +23538,8 @@
               }
             },
             {
+              "time_calculation": 82.61,
+              "time_physical": 499.55,
               "energy": {
                 "total": {
                   "value": -6.851116289580077e-16
@@ -22602,6 +23553,8 @@
               }
             },
             {
+              "time_calculation": 83.4,
+              "time_physical": 582.95,
               "energy": {
                 "total": {
                   "value": -7.082153524293155e-16
@@ -22615,6 +23568,8 @@
               }
             },
             {
+              "time_calculation": 82.9,
+              "time_physical": 665.85,
               "energy": {
                 "total": {
                   "value": -7.154135209786229e-16
@@ -22628,6 +23583,8 @@
               }
             },
             {
+              "time_calculation": 135.24,
+              "time_physical": 801.09,
               "energy": {
                 "total": {
                   "value": -7.184866181240687e-16
@@ -22641,6 +23598,8 @@
               }
             },
             {
+              "time_calculation": 141.25,
+              "time_physical": 942.34,
               "energy": {
                 "total": {
                   "value": -7.189405587346165e-16
@@ -22654,6 +23613,8 @@
               }
             },
             {
+              "time_calculation": 140.36,
+              "time_physical": 1082.7,
               "energy": {
                 "total": {
                   "value": -7.189589577417524e-16
@@ -22667,6 +23628,8 @@
               }
             },
             {
+              "time_calculation": 141.59,
+              "time_physical": 1224.29,
               "energy": {
                 "total": {
                   "value": -7.189618054152538e-16
@@ -22680,6 +23643,8 @@
               }
             },
             {
+              "time_calculation": 132.23,
+              "time_physical": 1356.52,
               "energy": {
                 "total": {
                   "value": -6.859324101294975e-16
@@ -22693,6 +23658,8 @@
               }
             },
             {
+              "time_calculation": 133.19,
+              "time_physical": 1489.71,
               "energy": {
                 "total": {
                   "value": -6.748057566068475e-16
@@ -22706,6 +23673,8 @@
               }
             },
             {
+              "time_calculation": 140.22,
+              "time_physical": 1629.93,
               "energy": {
                 "total": {
                   "value": -6.744799010107511e-16
@@ -22719,6 +23688,8 @@
               }
             },
             {
+              "time_calculation": 136.14,
+              "time_physical": 1766.0700000000002,
               "energy": {
                 "total": {
                   "value": -6.743792478606066e-16
@@ -22732,6 +23703,8 @@
               }
             },
             {
+              "time_calculation": 137.88,
+              "time_physical": 1903.9500000000003,
               "energy": {
                 "total": {
                   "value": -6.743249325746788e-16
@@ -22745,6 +23718,8 @@
               }
             },
             {
+              "time_calculation": 138.16,
+              "time_physical": 2042.1100000000004,
               "energy": {
                 "total": {
                   "value": -6.743114353548566e-16
@@ -22758,6 +23733,8 @@
               }
             },
             {
+              "time_calculation": 139.28,
+              "time_physical": 2181.3900000000003,
               "energy": {
                 "total": {
                   "value": -6.743146264725434e-16
@@ -22771,6 +23748,8 @@
               }
             },
             {
+              "time_calculation": 133.64,
+              "time_physical": 2315.03,
               "energy": {
                 "total": {
                   "value": -6.743205606960715e-16
@@ -22784,6 +23763,8 @@
               }
             },
             {
+              "time_calculation": 138.58,
+              "time_physical": 2453.61,
               "energy": {
                 "total": {
                   "value": -6.743259150566279e-16
@@ -22797,6 +23778,8 @@
               }
             },
             {
+              "time_calculation": 138.73,
+              "time_physical": 2592.34,
               "energy": {
                 "total": {
                   "value": -6.743329924155602e-16
@@ -22810,6 +23793,8 @@
               }
             },
             {
+              "time_calculation": 136.72,
+              "time_physical": 2729.06,
               "energy": {
                 "total": {
                   "value": -6.743386530850519e-16
@@ -22823,6 +23808,8 @@
               }
             },
             {
+              "time_calculation": 137.84,
+              "time_physical": 2866.9,
               "energy": {
                 "total": {
                   "value": -6.743419083891391e-16
@@ -22836,6 +23823,8 @@
               }
             },
             {
+              "time_calculation": 139.37,
+              "time_physical": 3006.27,
               "energy": {
                 "total": {
                   "value": -6.743428602246534e-16
@@ -22849,6 +23838,8 @@
               }
             },
             {
+              "time_calculation": 138.48,
+              "time_physical": 3144.75,
               "energy": {
                 "total": {
                   "value": -6.743438236999809e-16
@@ -22862,6 +23853,8 @@
               }
             },
             {
+              "time_calculation": 140.54,
+              "time_physical": 3285.29,
               "energy": {
                 "total": {
                   "value": -6.743444474449685e-16
@@ -22875,6 +23868,8 @@
               }
             },
             {
+              "time_calculation": 140.32,
+              "time_physical": 3425.61,
               "energy": {
                 "total": {
                   "value": -6.743446820500909e-16
@@ -22888,6 +23883,8 @@
               }
             },
             {
+              "time_calculation": 138.29,
+              "time_physical": 3563.9,
               "energy": {
                 "total": {
                   "value": -6.743449133226857e-16
@@ -22901,6 +23898,8 @@
               }
             },
             {
+              "time_calculation": 139.29,
+              "time_physical": 3703.19,
               "energy": {
                 "total": {
                   "value": -6.743450180489615e-16
@@ -22914,6 +23913,8 @@
               }
             },
             {
+              "time_calculation": 130.24,
+              "time_physical": 3833.4300000000003,
               "energy": {
                 "total": {
                   "value": -6.743450449623246e-16
@@ -22927,6 +23928,8 @@
               }
             },
             {
+              "time_calculation": 131.29,
+              "time_physical": 3964.7200000000003,
               "energy": {
                 "total": {
                   "value": -6.743451346425595e-16
@@ -22940,6 +23943,8 @@
               }
             },
             {
+              "time_calculation": 130.76,
+              "time_physical": 4095.4800000000005,
               "energy": {
                 "total": {
                   "value": -6.743451562623311e-16
@@ -22953,6 +23958,8 @@
               }
             },
             {
+              "time_calculation": 131.77,
+              "time_physical": 4227.250000000001,
               "energy": {
                 "total": {
                   "value": -6.743451893136327e-16
@@ -22966,6 +23973,8 @@
               }
             },
             {
+              "time_calculation": 124.81,
+              "time_physical": 4352.060000000001,
               "energy": {
                 "total": {
                   "value": -6.743451847121814e-16
@@ -22979,6 +23988,8 @@
               }
             },
             {
+              "time_calculation": 128.57,
+              "time_physical": 4480.630000000001,
               "energy": {
                 "total": {
                   "value": -6.743452198703456e-16
@@ -22992,6 +24003,8 @@
               }
             },
             {
+              "time_calculation": 128.66,
+              "time_physical": 4609.290000000001,
               "energy": {
                 "total": {
                   "value": -6.743452259858537e-16
@@ -23005,6 +24018,8 @@
               }
             },
             {
+              "time_calculation": 120.95,
+              "time_physical": 4730.240000000001,
               "energy": {
                 "total": {
                   "value": -6.743452239030242e-16
@@ -23018,6 +24033,8 @@
               }
             },
             {
+              "time_calculation": 123.76,
+              "time_physical": 4854.000000000001,
               "energy": {
                 "total": {
                   "value": -6.743452284435927e-16
@@ -23031,6 +24048,8 @@
               }
             },
             {
+              "time_calculation": 122.17,
+              "time_physical": 4976.170000000001,
               "energy": {
                 "total": {
                   "value": -6.743452254186833e-16
@@ -23044,6 +24063,8 @@
               }
             },
             {
+              "time_calculation": 122.02,
+              "time_physical": 5098.190000000001,
               "energy": {
                 "total": {
                   "value": -6.743452311224321e-16
@@ -23057,6 +24078,8 @@
               }
             },
             {
+              "time_calculation": 111.28,
+              "time_physical": 5209.470000000001,
               "energy": {
                 "total": {
                   "value": -6.743452327005759e-16
@@ -23083,7 +24106,8 @@
   "metadata": {
     "entry_name": "C428H42N8O8 VASP DFT SinglePoint simulation",
     "entry_type": "VASP DFT SinglePoint",
-    "mainfile": "/home/ravindra/codes/devel/neelravi/fairtool/tests/VASP/Expert/example08/vasprun.xml",
+    "mainfile": "tests/VASP/Expert/example08/vasprun.xml",
+    "text_search_contents": [],
     "domain": "dft",
     "optimade": {
       "elements": [
@@ -23327,7 +24351,7 @@
           5.9952772169235
         ],
         [
-          29.529534108527308,
+          29.529534108527304,
           16.480159887214,
           5.9335372347438
         ],
@@ -23448,7 +24472,7 @@
         ],
         [
           0.20847241908220002,
-          3.3932543247572005,
+          3.3932543247572,
           9.110339954172
         ],
         [
@@ -23592,7 +24616,7 @@
           9.1859640471768
         ],
         [
-          0.20633500350510006,
+          0.20633500350510003,
           11.987952785961102,
           9.2388418309575
         ],
@@ -23757,7 +24781,7 @@
           9.4444448338143
         ],
         [
-          15.091890335605001,
+          15.091890335605004,
           3.3934126630850003,
           9.349619310945002
         ],
@@ -23793,7 +24817,7 @@
         ],
         [
           26.252379721469005,
-          27.014477130688302,
+          27.014477130688306,
           9.2547937880757
         ],
         [
@@ -26049,6 +27073,15 @@
       "structure_features": [],
       "species": [
         {
+          "name": "H",
+          "chemical_symbols": [
+            "H"
+          ],
+          "concentration": [
+            1.0
+          ]
+        },
+        {
           "name": "N",
           "chemical_symbols": [
             "N"
@@ -26067,15 +27100,6 @@
           ]
         },
         {
-          "name": "H",
-          "chemical_symbols": [
-            "H"
-          ],
-          "concentration": [
-            1.0
-          ]
-        },
-        {
           "name": "O",
           "chemical_symbols": [
             "O"
@@ -26086,7 +27110,7 @@
         }
       ]
     },
-    "fair_parse_time": 1762293482.965327
+    "fair_parse_time": 1790275463.213645
   },
   "results": {
     "material": {
@@ -26111,27 +27135,27 @@
       "elemental_composition": [
         {
           "element": "C",
-          "mass": 1.994423656721262e-26,
+          "mass": 1.9944236595077444e-26,
           "atomic_fraction": 0.8806584362139918,
-          "mass_fraction": 0.9479284040255875
+          "mass_fraction": 0.9479284040255876
         },
         {
           "element": "H",
-          "mass": 1.673723746788804e-27,
+          "mass": 1.6737237491272248e-27,
           "atomic_fraction": 0.08641975308641975,
           "mass_fraction": 0.007806339217711779
         },
         {
           "element": "N",
-          "mass": 2.325867254414622e-26,
+          "mass": 2.3258672576641765e-26,
           "atomic_fraction": 0.01646090534979424,
           "mass_fraction": 0.020662804290263608
         },
         {
           "element": "O",
-          "mass": 2.656762874216004e-26,
+          "mass": 2.656762877927865e-26,
           "atomic_fraction": 0.01646090534979424,
-          "mass_fraction": 0.023602452466437027
+          "mass_fraction": 0.02360245246643703
         }
       ],
       "topology": [
@@ -26151,32 +27175,35 @@
           "chemical_formula_hill": "C428H42N8O8",
           "chemical_formula_iupac": "C214N4H21O4",
           "chemical_formula_anonymous": "A214B21C4D4",
+          "child_systems": [
+            "results/material/topology/1"
+          ],
           "atoms_ref": "#/run/0/system/0/atoms",
           "n_atoms": 486,
           "elemental_composition": [
             {
               "element": "H",
-              "mass": 1.673723746788804e-27,
+              "mass": 1.6737237491272248e-27,
               "atomic_fraction": 0.08641975308641975,
               "mass_fraction": 0.007806339217711779
             },
             {
               "element": "O",
-              "mass": 2.656762874216004e-26,
+              "mass": 2.656762877927865e-26,
               "atomic_fraction": 0.01646090534979424,
-              "mass_fraction": 0.023602452466437027
+              "mass_fraction": 0.02360245246643703
             },
             {
               "element": "N",
-              "mass": 2.325867254414622e-26,
+              "mass": 2.3258672576641765e-26,
               "atomic_fraction": 0.01646090534979424,
               "mass_fraction": 0.020662804290263608
             },
             {
               "element": "C",
-              "mass": 1.994423656721262e-26,
+              "mass": 1.9944236595077444e-26,
               "atomic_fraction": 0.8806584362139918,
-              "mass_fraction": 0.9479284040255875
+              "mass_fraction": 0.9479284040255876
             }
           ],
           "system_relation": {
@@ -26186,12 +27213,473 @@
             "a": 2.9773700000000004e-09,
             "b": 3.0067099996690288e-09,
             "c": 2.9541500004097602e-09,
-            "alpha": 1.5776746693823622,
+            "alpha": 1.577674669382362,
             "beta": 1.567717565944176,
             "gamma": 1.5710563808103817,
             "volume": 2.644505953439614e-26,
             "atomic_density": 1.8377723800087396e+28,
-            "mass_density": 340.51880453171424
+            "mass_density": 340.5188050074654
+          }
+        },
+        {
+          "system_id": "results/material/topology/1",
+          "label": "subsystem",
+          "method": "matid",
+          "description": "Automatically detected subsystem.",
+          "structural_type": "2D",
+          "dimensionality": "2D",
+          "building_block": "2D material",
+          "elements": [
+            "C"
+          ],
+          "chemical_formula_descriptive": "C336",
+          "chemical_formula_reduced": "C",
+          "chemical_formula_hill": "C336",
+          "chemical_formula_iupac": "C",
+          "chemical_formula_anonymous": "A",
+          "parent_system": "results/material/topology/0",
+          "child_systems": [
+            "results/material/topology/2"
+          ],
+          "atomic_fraction": 0.691358024691358,
+          "mass_fraction": 0.7441680928799004,
+          "atoms_ref": "#/run/0/system/0/atoms",
+          "n_atoms": 336,
+          "indices": [
+            [
+              58,
+              59,
+              60,
+              61,
+              62,
+              63,
+              64,
+              65,
+              66,
+              67,
+              68,
+              69,
+              70,
+              71,
+              72,
+              73,
+              74,
+              75,
+              76,
+              77,
+              78,
+              79,
+              80,
+              81,
+              82,
+              83,
+              84,
+              85,
+              86,
+              87,
+              88,
+              89,
+              90,
+              91,
+              92,
+              93,
+              94,
+              95,
+              96,
+              97,
+              98,
+              99,
+              100,
+              101,
+              102,
+              103,
+              104,
+              105,
+              106,
+              107,
+              108,
+              109,
+              110,
+              111,
+              112,
+              113,
+              114,
+              115,
+              116,
+              117,
+              118,
+              119,
+              120,
+              121,
+              122,
+              123,
+              124,
+              125,
+              126,
+              127,
+              128,
+              129,
+              130,
+              131,
+              132,
+              133,
+              134,
+              135,
+              136,
+              137,
+              138,
+              139,
+              140,
+              141,
+              142,
+              143,
+              144,
+              145,
+              146,
+              147,
+              148,
+              149,
+              150,
+              151,
+              153,
+              200,
+              204,
+              221,
+              222,
+              249,
+              250,
+              251,
+              252,
+              253,
+              254,
+              255,
+              256,
+              257,
+              258,
+              259,
+              260,
+              261,
+              262,
+              263,
+              264,
+              265,
+              266,
+              267,
+              268,
+              269,
+              270,
+              271,
+              272,
+              273,
+              274,
+              275,
+              276,
+              277,
+              278,
+              279,
+              280,
+              281,
+              282,
+              283,
+              284,
+              285,
+              286,
+              287,
+              288,
+              289,
+              290,
+              291,
+              292,
+              293,
+              294,
+              295,
+              296,
+              297,
+              298,
+              299,
+              300,
+              301,
+              302,
+              303,
+              304,
+              305,
+              306,
+              307,
+              308,
+              309,
+              310,
+              311,
+              312,
+              313,
+              314,
+              315,
+              316,
+              317,
+              318,
+              319,
+              320,
+              321,
+              322,
+              323,
+              324,
+              325,
+              326,
+              327,
+              328,
+              329,
+              330,
+              331,
+              332,
+              333,
+              334,
+              335,
+              336,
+              337,
+              338,
+              339,
+              340,
+              341,
+              342,
+              343,
+              344,
+              345,
+              346,
+              347,
+              348,
+              349,
+              350,
+              351,
+              352,
+              353,
+              354,
+              355,
+              356,
+              357,
+              358,
+              359,
+              360,
+              361,
+              362,
+              363,
+              364,
+              365,
+              366,
+              367,
+              368,
+              369,
+              370,
+              371,
+              372,
+              373,
+              374,
+              375,
+              376,
+              377,
+              378,
+              379,
+              380,
+              381,
+              382,
+              383,
+              384,
+              385,
+              386,
+              387,
+              388,
+              389,
+              390,
+              391,
+              392,
+              393,
+              394,
+              395,
+              396,
+              397,
+              398,
+              399,
+              400,
+              401,
+              402,
+              403,
+              404,
+              405,
+              406,
+              407,
+              408,
+              409,
+              410,
+              411,
+              412,
+              413,
+              414,
+              415,
+              416,
+              417,
+              418,
+              419,
+              420,
+              421,
+              422,
+              423,
+              424,
+              425,
+              426,
+              427,
+              428,
+              429,
+              430,
+              431,
+              432,
+              433,
+              434,
+              435,
+              436,
+              437,
+              438,
+              439,
+              440,
+              441,
+              442,
+              443,
+              444,
+              445,
+              446,
+              447,
+              448,
+              449,
+              450,
+              451,
+              452,
+              453,
+              454,
+              455,
+              456,
+              457,
+              458,
+              459,
+              460,
+              461,
+              462,
+              463,
+              464,
+              465,
+              466,
+              467,
+              468,
+              469,
+              470,
+              471,
+              472,
+              473,
+              474,
+              475,
+              476,
+              477,
+              478,
+              479,
+              480,
+              481,
+              482,
+              483,
+              484,
+              485
+            ]
+          ],
+          "elemental_composition": [
+            {
+              "element": "C",
+              "mass": 1.9944236595077444e-26,
+              "atomic_fraction": 1.0,
+              "mass_fraction": 1.0
+            }
+          ],
+          "system_relation": {
+            "type": "subsystem"
+          }
+        },
+        {
+          "system_id": "results/material/topology/2",
+          "label": "conventional cell",
+          "method": "matid",
+          "description": "The conventional cell of the material from which the subsystem is constructed from.",
+          "material_id": "jPcWsq-Rb0gtgx2krJDmLvQUxpcL",
+          "structural_type": "2D",
+          "dimensionality": "2D",
+          "building_block": "2D material",
+          "elements": [
+            "C"
+          ],
+          "chemical_formula_descriptive": "C2",
+          "chemical_formula_reduced": "C",
+          "chemical_formula_hill": "C2",
+          "chemical_formula_iupac": "C",
+          "chemical_formula_anonymous": "A",
+          "parent_system": "results/material/topology/1",
+          "n_atoms": 2,
+          "atoms": {
+            "m_def": "nomad.datamodel.metainfo.system.Atoms",
+            "atomic_numbers": [
+              6,
+              6
+            ],
+            "species": [
+              6,
+              6
+            ],
+            "labels": [
+              "C",
+              "C"
+            ],
+            "positions": [
+              [
+                1.2406646036875525e-10,
+                7.162980429130485e-11,
+                0.0
+              ],
+              [
+                -1.7812758948413934e-27,
+                1.4325960858260973e-10,
+                0.0
+              ]
+            ],
+            "lattice_vectors": [
+              [
+                2.481329207375105e-10,
+                0.0,
+                0.0
+              ],
+              [
+                -1.2406646036875525e-10,
+                2.148894128739146e-10,
+                0.0
+              ],
+              [
+                0.0,
+                0.0,
+                0.0
+              ]
+            ],
+            "periodic": [
+              true,
+              true,
+              false
+            ]
+          },
+          "elemental_composition": [
+            {
+              "element": "C",
+              "mass": 1.9944236595077444e-26,
+              "atomic_fraction": 1.0,
+              "mass_fraction": 1.0
+            }
+          ],
+          "system_relation": {
+            "type": "conventional_cell"
+          },
+          "cell": {
+            "a": 2.481329207375105e-10,
+            "b": 2.4813292073751044e-10,
+            "gamma": 2.0943951023931957
           }
         }
       ]
@@ -26201,7 +27689,7 @@
       "workflow_name": "SinglePoint",
       "simulation": {
         "program_name": "VASP",
-        "program_version": "5.4.4.18Apr17-6-g9f103f2a35 (build Sep 16 2020 16:27:35) complex parallel LinuxIFC",
+        "program_version": "5.4.4 18Apr17-6-g9f103f2a35 complex parallel LinuxIFC",
         "dft": {
           "basis_set_type": "plane waves",
           "core_electron_treatment": "pseudopotential",
@@ -26223,37 +27711,30 @@
     "properties": {
       "n_calculations": 1,
       "electronic": {
-        "band_gap": [
-          {
-            "index": 0,
-            "value": 0.0,
-            "energy_highest_occupied": -4.803005113405199e-19,
-            "energy_lowest_unoccupied": -4.803005113405199e-19,
-            "provenance": {
-              "label": "dos",
-              "dos": "#/run/0/calculation/0/dos_electronic/0/total/0"
-            }
-          }
-        ],
         "dos_electronic": [
           {
             "energies": "#/run/0/calculation/0/dos_electronic/0/energies",
             "total": [
               "#/run/0/calculation/0/dos_electronic/0/total/0"
             ],
+            "energy_fermi": -4.7723803081346065e-19
+          }
+        ],
+        "dos_electronic_new": [
+          {
             "spin_polarized": false,
-            "energy_fermi": -4.7723803081346065e-19,
-            "band_gap": [
+            "has_projected": false,
+            "data": [
               {
-                "index": 0,
-                "value": 0.0,
-                "energy_highest_occupied": -4.803005113405199e-19,
-                "energy_lowest_unoccupied": -4.803005113405199e-19
+                "energies": "#/run/0/calculation/0/dos_electronic/0/energies",
+                "total": "#/run/0/calculation/0/dos_electronic/0/total/0",
+                "energy_fermi": -4.7723803081346065e-19
               }
             ]
           }
         ]
       }
     }
-  }
+  },
+  "text_search_contents": []
 }

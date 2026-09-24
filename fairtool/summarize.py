@@ -176,7 +176,10 @@ def extract_context(data: Dict[str, Any]) -> Dict[str, Any]:
     context["sim_first_nested_data"] = nested_dicts[0] if len(nested_dicts) > 0 else {}
     context["sim_second_nested_data"] = nested_dicts[1] if len(nested_dicts) > 1 else {}
 
-    # Safely get topology data
+    # Safely get topology data. A topology cell is that of the material a subsystem is made of, so it
+    # is the cell of the whole system only for a bulk material. In example08, a graphene sheet with
+    # adsorbed molecules, it is the 2-atom cell of the graphene.
+    is_bulk = material.get("structural_type") == "bulk"
     t_original_data = {}
     t_cell_data = {}
     for obj in topology:
@@ -185,7 +188,7 @@ def extract_context(data: Dict[str, Any]) -> Dict[str, Any]:
         label = (obj.get("label") or "").strip().lower()
         if label == "original":
             t_original_data = obj
-        elif label in ("primitive cell", "conventional cell"):
+        elif label in ("primitive cell", "conventional cell") and is_bulk:
             t_cell_data = obj
 
     context["t_original_data"] = t_original_data

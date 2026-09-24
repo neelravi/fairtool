@@ -33,6 +33,7 @@ dependencies = [
     "msgpack>=0.6.2",	# Binary Serialization in python
     "nomad-lab>=1.2.1", # Backend for parsing output files
     "nomad-parser-plugins-electronic>=1.1.0", # VASP and other parsers used by `nomad parse` (legacy `run` schema)
+    "nomad-normalizer-plugin-system>=1.0.5", # Lets `nomad parse` fill results.material (formula, symmetry, topology)
     "pymatgen>=2026.9.24", # Structures and symmetry analysis (requires Python 3.11+)
     "pint>=0.23",       # Unit conversion
     "pandas>=2.0",      # Tabular (CSV) export

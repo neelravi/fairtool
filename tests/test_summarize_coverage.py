@@ -119,11 +119,12 @@ def test_extract_context_topology_and_energies():
     data = {
         "results": {
             "material": {
+                "structural_type": "bulk",
                 "topology": [
                     "not-a-dict",  # Should be skipped
                     {"label": "original", "cell": {"a": 5e-10}},
                     {"label": "primitive cell", "cell": {"a": 5e-10}, "symmetry": {"crystal_system": "Cubic"}},
-                ]
+                ],
             },
             "method": {"simulation": {}},
         },
@@ -147,6 +148,35 @@ def test_extract_context_topology_and_energies():
     assert abs(ctx["final_energies_ev"]["band_gap"] - 2.5) < 1e-6
     assert ctx["original_cell"]["a"] == 5e-10
     assert ctx["t_cell_data_sym"]["crystal_system"] == "Cubic"
+
+
+def test_extract_context_skips_subsystem_cell_of_non_bulk_material():
+    """
+    In example08, a graphene sheet with adsorbed molecules, NOMAD's topology holds the conventional
+    cell of the graphene subsystem, not of the whole system. Only a bulk material's cell gets tables.
+    """
+    data = {
+        "results": {
+            "material": {
+                "structural_type": "unavailable",
+                "topology": [
+                    {"label": "original", "n_atoms": 486, "cell": {"a": 2.9774e-9, "b": 3.0067e-9, "c": 2.9542e-9}},
+                    {"label": "subsystem", "structural_type": "2D", "n_atoms": 336},
+                    {
+                        "label": "conventional cell",
+                        "structural_type": "2D",
+                        "n_atoms": 2,
+                        "cell": {"a": 2.4813e-10, "b": 2.4813e-10, "gamma": 2.0944},
+                    },
+                ],
+            }
+        }
+    }
+    ctx = extract_context(data)
+    assert ctx["t_cell_data"] == {}
+    md = generate_markdown(ctx)
+    assert "- ### Lattice (original)" in md
+    assert "Lattice (conventional cell)" not in md
 
 
 def test_extract_context_uses_final_calculation():
