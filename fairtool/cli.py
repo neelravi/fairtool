@@ -207,6 +207,29 @@ def _find_json_files(path: Path, recursive: bool = True) -> list[Path]:
     return files_to_process
 
 
+def _output_dir_for(file: Path, input_path: Path, output_dir: Optional[Path]) -> Path:
+    """
+    Returns the directory for the outputs made from one input file.
+
+    Under an output directory, the file keeps the subdirectory it has below the input path.
+    Calculations in different directories often share a file name (e.g. vasprun.xml), so
+    putting them all in one directory would make them overwrite, or be skipped as unchanged
+    copies of, each other.
+
+    Args:
+        file (Path): An input file found by searching input_path.
+        input_path (Path): The file or directory that was searched.
+        output_dir (Optional[Path]): The --output directory, or None to use the file's own directory.
+
+    Returns:
+        Path: The directory to write this file's outputs to.
+    """
+    if output_dir is None:
+        return file.parent
+    search_root = input_path if input_path.is_dir() else input_path.parent
+    return output_dir / file.parent.relative_to(search_root)
+
+
 def _warn_ignored_option(option: str):
     """Warns that a deprecated option, still accepted so existing scripts keep working, has no effect."""
     log.warning(
@@ -242,7 +265,8 @@ def parse(
         typer.Option(
             "--output",
             "-o",
-            help="Directory to save parsed JSON files. If not given, files are saved next to their originals.",
+            help="Directory to save parsed JSON files, each in the subdirectory its original has "
+            "below the input path. If not given, files are saved next to their originals.",
             resolve_path=True,
         ),
     ] = None,
@@ -270,8 +294,7 @@ def parse(
 
     for file in files_to_process:
         try:
-            # If no --output given, use file’s directory
-            target_dir = output_dir if output_dir else file.parent
+            target_dir = _output_dir_for(file, input_path, output_dir)
             target_dir.mkdir(parents=True, exist_ok=True)
 
             # The logic to check for existing files and mtime is now
@@ -314,7 +337,8 @@ def analyze(
         typer.Option(
             "--output",
             "-o",
-            help="Directory to save analysis results (e.g., plots, summary tables). "
+            help="Directory to save analysis results (e.g., plots, summary tables). Each calculation's results "
+            "go in the subdirectory its JSON file has below the input directory. "
             "If not given, results are saved in the input directory, or next to the input file.",
             resolve_path=True,
         ),
@@ -373,8 +397,8 @@ def summarize(
         typer.Option(
             "--output",
             "-o",
-            help="Directory to save summary files (e.g., Markdown reports). "
-            "If not given, files are saved next to their JSON files.",
+            help="Directory to save summary files (e.g., Markdown reports), each in the subdirectory its "
+            "JSON file has below the input path. If not given, files are saved next to their JSON files.",
             resolve_path=True,
         ),
     ] = None,
@@ -408,8 +432,7 @@ def summarize(
 
     for json_file in json_files:
         try:
-            # If no --output given, use JSON file's directory
-            target_dir = output_dir if output_dir else json_file.parent
+            target_dir = _output_dir_for(json_file, input_path, output_dir)
             target_dir.mkdir(parents=True, exist_ok=True)
 
             # --- Prepare output path ---
@@ -597,7 +620,8 @@ def all(
         typer.Option(
             "--output",
             "-o",
-            help="Directory to save all generated outputs.",
+            help="Directory to save all generated outputs. Each calculation's files go in the subdirectory "
+            "its input file has below the input path.",
             resolve_path=True,
         ),
     ] = Path("./"),
@@ -674,21 +698,27 @@ def all(
         return
 
     parse_success = 0
+    parse_skip = 0
     parse_fail = 0
     for file in files_to_process:
         try:
-            # The 'all' command *requires* an output_dir, so we use it.
+            target_dir = _output_dir_for(file, input_path, output_dir)
+            target_dir.mkdir(parents=True, exist_ok=True)
             log.info(f"Parsing file: {file}")
-            parse_module.run_parser(file, output_dir, force)
-            parse_success += 1
+            # run_parser returns True if the file is unchanged since its last parse
+            if parse_module.run_parser(file, target_dir, force):
+                parse_skip += 1
+            else:
+                parse_success += 1
         except Exception as e:
             log.error(f"Failed to parse {file}: {e}", exc_info=False)
             parse_fail += 1
 
-    if parse_success == 0:
+    # Skipped files were parsed by an earlier run, so the later steps still have their output
+    if parse_success + parse_skip == 0:
         log.error("No files were successfully parsed. Aborting workflow.")
         raise typer.Exit(code=1)
-    log.info(f"Parsing complete. Success: {parse_success}, Failed: {parse_fail}")
+    log.info(f"Parsing complete. Success: {parse_success}, Skipped: {parse_skip}, Failed: {parse_fail}")
 
     # Subsequent steps operate on the output_dir
     # We pass 'output_dir' as the 'input_path' for all subsequent steps.
@@ -713,14 +743,16 @@ def all(
         else:
             for json_file in json_files:
                 try:
+                    # Write the summary next to its JSON file, where parse also put the
+                    # fair-structure.json that the summary's structure viewer loads
                     summary_base_name = json_file.stem.replace("fair_parsed_", "fair_summarized_")
-                    md_output_path = output_dir / f"{summary_base_name}.md"
+                    md_output_path = json_file.parent / f"{summary_base_name}.md"
 
                     if not force and md_output_path.exists():
                         log.info(f"Skipping summary for {json_file.name}; output exists.")
                         continue
 
-                    summarize_module.run_summarization(json_file, output_dir, template)
+                    summarize_module.run_summarization(json_file, json_file.parent, template)
                 except Exception as e:
                     log.error(f"Summarization failed for {json_file.name}: {e}", exc_info=False)
     except Exception as e:

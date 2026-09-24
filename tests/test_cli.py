@@ -179,7 +179,11 @@ def test_cli_parse_command_options(mock_all_runners, setup_test_files):
     # Check the call args.
     # call_args_list[0][0] is the (args,) tuple of the first call.
     # The args are (file_path, output_dir_path, force_flag)
-    expected_calls = [(test_dir / "vasprun.xml", out_dir, True), (test_dir / "subdir" / "vasprun.xml", out_dir, True)]
+    # Each file's outputs keep its subdirectory, so the two vasprun.xml don't collide
+    expected_calls = [
+        (test_dir / "vasprun.xml", out_dir, True),
+        (test_dir / "subdir" / "vasprun.xml", out_dir / "subdir", True),
+    ]
 
     # Convert mock calls to a simpler, comparable format
     actual_calls = [(call[0][0], call[0][1], call[0][2]) for call in mock_parse.call_args_list]
