@@ -1,4 +1,3 @@
-import json
 import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -6,18 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml
 
-from fairtool.visualize import (
-    _copy_resource_tree,
-    _extract_title,
-    _hr_size,
-    _site_template,
-    generate_markdown_embedding,
-    get_band_structure_data,
-    get_dos_data,
-    get_structure_data,
-    run_visualization,
-    serve_docs,
-)
+from fairtool.visualize import _copy_resource_tree, _extract_title, _hr_size, _site_template, serve_docs
 
 
 @pytest.fixture
@@ -56,106 +44,6 @@ def test_extract_title_missing_file(tmp_path):
     empty_file = tmp_path / "empty.txt"
     empty_file.write_text("", encoding="utf-8")
     assert _extract_title(empty_file) == "—"
-
-
-def test_get_structure_data_valid():
-    """Test extracting valid structure data from lattice, species, and coordinates."""
-    data = {
-        "results": {
-            "properties": {
-                "structure": {
-                    "lattice_vectors": [[5.43, 0, 0], [0, 5.43, 0], [0, 0, 5.43]],
-                    "species_at_sites": ["Si", "Si"],
-                    "cartesian_site_positions": [[0.0, 0.0, 0.0], [1.35, 1.35, 1.35]],
-                }
-            }
-        }
-    }
-    struct = get_structure_data(data)
-    assert struct is not None
-    assert "@class" in struct or "lattice" in struct or "sites" in struct
-
-
-def test_get_structure_data_none():
-    """Test structure data extraction returns None when missing."""
-    assert get_structure_data({}) is None
-    assert get_structure_data({"results": {}}) is None
-
-
-def test_get_band_structure_data():
-    """Test extracting band structure data."""
-    data_with_bs = {
-        "results": {"properties": {"electronic": {"band_structure": {"pymatgen_bandstructure": {"bands": [1, 2, 3]}}}}}
-    }
-    assert get_band_structure_data(data_with_bs) == {"bands": [1, 2, 3]}
-    assert get_band_structure_data({}) is None
-
-
-def test_get_dos_data():
-    """Test extracting DOS data."""
-    data_with_dos = {"results": {"properties": {"electronic": {"dos": {"pymatgen_dos": {"energies": [0.1, 0.2]}}}}}}
-    assert get_dos_data(data_with_dos) == {"energies": [0.1, 0.2]}
-    assert get_dos_data({}) is None
-
-
-def test_generate_markdown_embedding():
-    """Test generating React visualization Markdown embedding snippets."""
-    snippet = generate_markdown_embedding(Path("output/calc_structure.json"), "structure", "viz-calc-1")
-    assert 'id="viz-calc-1"' in snippet
-    assert 'data-viz-type="structure"' in snippet
-    assert 'data-src="calc_structure.json"' in snippet
-
-
-def test_run_visualization_single_file(tmp_path):
-    """Test run_visualization on a single parsed JSON file."""
-    parsed_content = {
-        "results": {
-            "properties": {
-                "structure": {
-                    "lattice_vectors": [[3.0, 0, 0], [0, 3.0, 0], [0, 0, 3.0]],
-                    "species_at_sites": ["Fe"],
-                    "cartesian_site_positions": [[0.0, 0.0, 0.0]],
-                },
-                "electronic": {
-                    "band_structure": {"pymatgen_bandstructure": {"dummy": "bands"}},
-                    "dos": {"pymatgen_dos": {"dummy": "dos"}},
-                },
-            }
-        }
-    }
-    json_file = tmp_path / "sample_parsed.json"
-    json_file.write_text(json.dumps(parsed_content), encoding="utf-8")
-    out_dir = tmp_path / "viz_out"
-    out_dir.mkdir()
-
-    run_visualization(json_file, out_dir, embed=True)
-
-    assert (out_dir / "sample_structure.json").exists()
-    assert (out_dir / "sample_bands.json").exists()
-    assert (out_dir / "sample_dos.json").exists()
-    assert (out_dir / "visualization_embeds.md").exists()
-
-
-def test_run_visualization_empty_dir(tmp_path):
-    """Test run_visualization with no parsed files found."""
-    empty_dir = tmp_path / "empty"
-    empty_dir.mkdir()
-    out_dir = tmp_path / "viz_out"
-    out_dir.mkdir()
-
-    run_visualization(empty_dir, out_dir, embed=False)
-    assert len(list(out_dir.iterdir())) == 0
-
-
-def test_run_visualization_invalid_input(tmp_path):
-    """Test run_visualization with non-JSON file."""
-    txt_file = tmp_path / "bad.txt"
-    txt_file.write_text("hello", encoding="utf-8")
-    out_dir = tmp_path / "viz_out"
-    out_dir.mkdir()
-
-    run_visualization(txt_file, out_dir, embed=False)
-    assert len(list(out_dir.iterdir())) == 0
 
 
 def test_site_template_ships_files_referenced_by_mkdocs_yml():
@@ -272,119 +160,6 @@ def test_extract_title_read_error(monkeypatch):
     assert _extract_title(Path("some_file.md")) == "—"
 
 
-def test_get_structure_data_branches(monkeypatch):
-    """Test get_structure_data with pymatgen_structure, missing Structure, incomplete, and exception."""
-    import fairtool.visualize as viz
-
-    # Case 1: Structure is None
-    monkeypatch.setattr(viz, "Structure", None)
-    assert viz.get_structure_data({}) is None
-
-    # Case 2: Pymatgen Structure available with pymatgen_structure dict
-    from pymatgen.core import Structure
-
-    monkeypatch.setattr(viz, "Structure", Structure)
-
-    pmg_dict = {
-        "@module": "pymatgen.core.structure",
-        "@class": "Structure",
-        "charge": 0,
-        "lattice": {
-            "matrix": [[3.0, 0, 0], [0, 3.0, 0], [0, 0, 3.0]],
-            "a": 3.0,
-            "b": 3.0,
-            "c": 3.0,
-            "alpha": 90.0,
-            "beta": 90.0,
-            "gamma": 90.0,
-            "volume": 27.0,
-        },
-        "sites": [
-            {
-                "species": [{"element": "Fe", "occu": 1}],
-                "abc": [0.0, 0.0, 0.0],
-                "xyz": [0.0, 0.0, 0.0],
-                "label": "Fe",
-            }
-        ],
-    }
-    data_with_pmg = {"results": {"properties": {"structure": {"pymatgen_structure": pmg_dict}}}}
-    struct_out = viz.get_structure_data(data_with_pmg)
-    assert struct_out is not None
-
-    # Case 3: Incomplete data (missing coords/species)
-    incomplete_data = {"results": {"properties": {"structure": {"lattice_vectors": [[1, 0, 0]]}}}}
-    assert viz.get_structure_data(incomplete_data) is None
-
-    # Case 4: Exception in processing
-    error_data = {"results": {"properties": {"structure": {"pymatgen_structure": "bad-type"}}}}
-    assert viz.get_structure_data(error_data) is None
-
-
-def test_get_band_and_dos_exception(monkeypatch):
-    """Test get_band_structure_data and get_dos_data exception handling."""
-    from unittest.mock import MagicMock
-
-    mock_bad_dict = MagicMock()
-    mock_bad_dict.get.side_effect = RuntimeError("Bad structure")
-
-    assert get_band_structure_data(mock_bad_dict) is None
-    assert get_dos_data(mock_bad_dict) is None
-
-
-def test_run_visualization_corrupted_json_and_exception(tmp_path):
-    """Test run_visualization handles corrupted JSON and file exceptions."""
-    out_dir = tmp_path / "out"
-    out_dir.mkdir()
-
-    # Corrupted JSON
-    bad_json = tmp_path / "calc_parsed.json"
-    bad_json.write_text("{ unclosed", encoding="utf-8")
-    run_visualization(bad_json, out_dir, embed=False)
-
-    # File that causes an exception
-    good_json = tmp_path / "calc2_parsed.json"
-    good_json.write_text(json.dumps({"results": {}}), encoding="utf-8")
-
-    with patch("fairtool.visualize.get_structure_data", side_effect=RuntimeError("Failure")):
-        run_visualization(good_json, out_dir, embed=False)
-
-
-def test_run_visualization_embed_save_failure(tmp_path, monkeypatch):
-    """Test run_visualization handles failure when saving visualization_embeds.md."""
-    out_dir = tmp_path / "out"
-    out_dir.mkdir()
-
-    json_file = tmp_path / "calc_parsed.json"
-    json_file.write_text(
-        json.dumps(
-            {
-                "results": {
-                    "properties": {
-                        "structure": {
-                            "lattice_vectors": [[3.0, 0, 0], [0, 3.0, 0], [0, 0, 3.0]],
-                            "species_at_sites": ["Fe"],
-                            "cartesian_site_positions": [[0.0, 0.0, 0.0]],
-                        }
-                    }
-                }
-            }
-        ),
-        encoding="utf-8",
-    )
-
-    orig_open = open
-
-    def mock_open(path, mode="r", *args, **kwargs):
-        if "visualization_embeds.md" in str(path) and "w" in mode:
-            raise OSError("Write error on embeds")
-        return orig_open(path, mode, *args, **kwargs)
-
-    monkeypatch.setattr("builtins.open", mock_open)
-    # Should not raise exception
-    run_visualization(json_file, out_dir, embed=True)
-
-
 def test_serve_docs_missing_packaged_mkdocs(tmp_path, fake_template, caplog):
     """Test serve_docs raises SystemExit if packaged mkdocs.yml is missing."""
     docs_dir = tmp_path / "docs"
@@ -415,7 +190,7 @@ def test_serve_docs_smart_index_generation(tmp_path):
     (sub / "fair-structure.json").write_text("{}", encoding="utf-8")
 
     # Other data files with heuristic categories
-    (sub / "vasprun_parsed.json").write_text("{}", encoding="utf-8")
+    (sub / "fair_parsed_vasprun.json").write_text("{}", encoding="utf-8")
     (sub / "fair_summarized_calc.json").write_text("{}", encoding="utf-8")
     (sub / "calc_metadata.json").write_text("{}", encoding="utf-8")
     (sub / "other_generic.json").write_text("{}", encoding="utf-8")
