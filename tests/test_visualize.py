@@ -475,21 +475,30 @@ def test_serve_docs_build_modes(tmp_path):
         abs_site = tmp_path / "abs_site"
         serve_docs(docs_dir, build=True, build_dir=abs_site, dry_run=False)
 
-    # Case 3: Build failure (non-zero exit code)
+    # Case 3: Build failure (non-zero exit code) exits with mkdocs' return code
     with patch("subprocess.run") as mock_run:
         mock_proc = MagicMock()
-        mock_proc.returncode = 1
+        mock_proc.returncode = 3
         mock_run.return_value = mock_proc
 
-        serve_docs(docs_dir, build=True, dry_run=False)
+        with pytest.raises(SystemExit) as excinfo:
+            serve_docs(docs_dir, build=True, dry_run=False)
+        assert excinfo.value.code == 3
+        # The temporary directory holding the generated mkdocs.yml is still removed
+        cmd = mock_run.call_args[0][0]
+        assert not Path(cmd[cmd.index("-f") + 1]).parent.exists()
 
     # Case 4: FileNotFoundError for mkdocs
     with patch("subprocess.run", side_effect=FileNotFoundError("mkdocs missing")):
-        serve_docs(docs_dir, build=True, dry_run=False)
+        with pytest.raises(SystemExit) as excinfo:
+            serve_docs(docs_dir, build=True, dry_run=False)
+        assert excinfo.value.code == 1
 
     # Case 5: General exception during build
     with patch("subprocess.run", side_effect=RuntimeError("Build crashed")):
-        serve_docs(docs_dir, build=True, dry_run=False)
+        with pytest.raises(SystemExit) as excinfo:
+            serve_docs(docs_dir, build=True, dry_run=False)
+        assert excinfo.value.code == 1
 
 
 def test_serve_docs_serve_interactive(tmp_path):

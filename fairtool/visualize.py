@@ -875,7 +875,9 @@ def serve_docs(
         # output location; by default the site is written under the temp dir
         # as '<temp_dir>/site'. We do not change cleanup semantics here: the
         # temporary directory is removed at the end of this function unless
-        # `dry_run` is True.
+        # `dry_run` is True. A failed build raises SystemExit, with mkdocs'
+        # return code or 1 if mkdocs could not be run, so that
+        # `fair visualize --build` exits non-zero.
         if build:
             # Resolve build target to an absolute path. If the caller provided
             # a relative path (e.g. 'site'), resolve it against the current
@@ -898,15 +900,17 @@ def serve_docs(
                 proc = subprocess.run(cmd, check=False)
                 if proc.returncode != 0:
                     log.error(f"mkdocs build exited with return code {proc.returncode}")
-                    # Do not raise SystemExit here; allow caller to inspect temp dir
+                    raise SystemExit(proc.returncode)
                 else:
                     log.info(f"mkdocs build completed; site available at: {target}")
             except FileNotFoundError:
                 log.error(
                     "`mkdocs` command not found. Is mkdocs installed in the active Python environment? Try `pip install mkdocs mkdocs-material mkdocs-macros-plugin`."
                 )
+                raise SystemExit(1)
             except Exception as e:
                 log.error(f"Error running mkdocs build: {e}", exc_info=True)
+                raise SystemExit(1)
             # If build was requested and this is not a dry_run, do not start
             # the interactive dev server afterwards. Return so callers (CI
             # scripts or users) can continue without hanging on a serve.
