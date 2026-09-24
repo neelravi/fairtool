@@ -1,9 +1,12 @@
 import json
+import re
 from pathlib import Path
 
 import pytest
 
 from fairtool.summarize import run_summarization
+
+VASP_EXAMPLES = Path(__file__).parent / "VASP"
 
 
 # --- [NEW] Session-scoped fixture to load the reference data once ---
@@ -100,12 +103,54 @@ def test_run_summarization_happy_path(full_reference_json_file, tmp_path):
     # Check for data from 'metadata'
     assert "Cs2AgHgCl6 VASP DFT SinglePoint simulation" in content  # from entry_name
 
+    # The reference data stores a band gap of 7.23 eV for this metal, and no eigenvalues
+    # to derive the gap from, so there is no Band Gap row
+    assert "Band Gap" not in content
+
     # Check that placeholders are present where data was truncated
     # (e.g., cell.a is not in the reference data)
     # assert "unavailable" in content
 
     # Check that the k-point table header is present
     # assert "| kx | ky | kz | Weight |" in content
+
+
+def _summarize(parsed_file, output_dir):
+    """Summarizes a parsed archive from tests/VASP and returns the Markdown report."""
+    input_file = VASP_EXAMPLES / parsed_file
+    run_summarization(input_file, output_dir, template_path=None)
+    summary_name = input_file.stem.replace("fair_parsed_", "fair_summarized_") + ".md"
+    return (output_dir / summary_name).read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("parsed_file", "band_gap_eV"),
+    [
+        # Si
+        ("Basic/example03/fair_parsed_dos_si_vasprun.json", 0.6818),
+        # Si band path, whose stored band_gap[0].value is 0.0
+        ("Basic/example02/fair_parsed_band_si_vasprun.json", 0.5091),
+        # Cs2AgHgCl6, a metal, whose stored band_gap[0].value is 7.23 eV
+        ("Basic/example01/fair_parsed_vasprun.json", 0.0),
+    ],
+)
+def test_run_summarization_band_gap_on_parsed_vasp_examples(tmp_path, parsed_file, band_gap_eV):
+    """The Band Gap row of the real archives is derived from their eigenvalues."""
+    content = _summarize(parsed_file, tmp_path)
+    assert f"| **Band Gap** | {band_gap_eV:.6f} |" in content
+
+
+def test_run_summarization_relaxation_reports_final_ionic_step(tmp_path):
+    """
+    example06 relaxes AcAg in 3 ionic steps. The energies, SCF iterations and DOS come from
+    the last one; the first has a total energy of -7.134064 eV and 12 SCF iterations.
+    """
+    content = _summarize("Advanced/example06/fair_parsed_vasprun.json", tmp_path)
+
+    assert "| **Total** | -7.138442 |" in content
+    assert "| **Band Gap** | 0.000000 |" in content  # a metal
+    assert re.findall(r"^\| (\d+) \|", content, flags=re.MULTILINE) == ["1", "2", "3", "4", "5", "6"]
+    assert 'id="dos_chart_div"' in content
 
 
 def test_run_summarization_robustness_empty_json(empty_json_file, tmp_path):

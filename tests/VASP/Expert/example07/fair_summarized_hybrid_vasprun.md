@@ -141,7 +141,7 @@
     | **Total** | -860.865878 |
     | **Free** | -860.865878 |
     | **Total (T=0)** | -0.000000 |
-    | **Band Gap** | 4.547900 |
+    | **Band Gap** | 4.650900 |
 
 - ### SCF Iteration Energies
 
@@ -248,7 +248,7 @@
     data.addRows(rows);
 
     var options = {
-      title: 'Density of States (DOS)',
+      title: '',
       legend: { position: 'bottom' },
       hAxis: {
         title: 'Energy (eV) [Fermi Energy at 0 eV]'
