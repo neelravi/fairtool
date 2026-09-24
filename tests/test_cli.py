@@ -26,7 +26,6 @@ def mock_all_runners():
         patch("fairtool.cli.analyze_module.run_analysis") as mock_analyze,
         patch("fairtool.cli.summarize_module.run_summarization") as mock_summarize,
         patch("fairtool.cli.export_module.run_export") as mock_export,
-        patch("fairtool.cli.visualize_module.run_visualization") as mock_visualize,
     ):
         # Make run_parser return False (not skipped)
         mock_parse.return_value = False
@@ -38,7 +37,6 @@ def mock_all_runners():
             "analyze": mock_analyze,
             "summarize": mock_summarize,
             "export": mock_export,
-            "visualize": mock_visualize,
         }
 
 
@@ -249,11 +247,14 @@ def test_cli_analyze_then_export_without_analyze_output(tmp_path, monkeypatch):
     assert "fair_parsed_dos_si_vasprun" in exported_csv.read_text(encoding="utf-8")
 
 
-def test_cli_all_command(mock_all_runners, setup_test_files):
+def test_cli_all_command(mock_all_runners, setup_test_files, caplog):
     """
     Test the `all` command to ensure it orchestrates the
     full workflow and passes options correctly.
     """
+    import logging
+
+    caplog.set_level(logging.WARNING)
     test_dir = setup_test_files
     out_dir = setup_test_files / "all_output"
 
@@ -292,8 +293,8 @@ def test_cli_all_command(mock_all_runners, setup_test_files):
         # 4. Export
         mock_all_runners["export"].assert_called_once_with(out_dir, out_dir, "csv")
 
-        # 5. Visualize
-        mock_all_runners["visualize"].assert_called_once_with(out_dir, out_dir, True)
+        # The deprecated --embed flag is still accepted, but only warns
+        assert "--embed is deprecated" in caplog.text
 
 
 def test_cli_summarize_command(mock_all_runners, setup_test_files):
@@ -318,15 +319,24 @@ def test_cli_export_command(mock_all_runners, setup_test_files):
     mock_export.assert_called_once_with(input_file, out_dir, "yaml")
 
 
-def test_cli_visualize_command(mock_all_runners, setup_test_files):
-    """Test the `visualize` command without serve."""
-    input_dir = setup_test_files
+def test_cli_visualize_command(setup_test_files, monkeypatch, caplog):
+    """Test that `visualize` still accepts the deprecated --output/--embed flags, warns, and writes nothing."""
+    import logging
+
+    import fairtool.cli as fair_cli
+
+    caplog.set_level(logging.WARNING)
+    mock_serve_docs = MagicMock()
+    monkeypatch.setattr(fair_cli.visualize_module, "serve_docs", mock_serve_docs)
     out_dir = setup_test_files / "viz_out"
 
-    result = runner.invoke(app, ["visualize", str(input_dir), "--output", str(out_dir), "--embed", "--no-serve"])
+    result = runner.invoke(app, ["visualize", str(setup_test_files), "--output", str(out_dir), "--embed", "--no-serve"])
     assert result.exit_code == 0
-    mock_viz = mock_all_runners["visualize"]
-    mock_viz.assert_called_once_with(input_dir, out_dir, True)
+    assert "--output is deprecated" in caplog.text
+    assert "--embed is deprecated" in caplog.text
+    assert "Nothing to do" in caplog.text
+    assert not out_dir.exists()
+    mock_serve_docs.assert_not_called()
 
 
 def test_cli_help():
@@ -400,15 +410,6 @@ def test_cli_export_error_handling(mock_all_runners, setup_test_files):
     json_file = setup_test_files / "fair_parsed_data.json"
 
     result = runner.invoke(app, ["export", str(json_file)])
-    assert result.exit_code == 1
-
-
-def test_cli_visualize_error_handling(mock_all_runners, setup_test_files):
-    """Test visualize command catches backend exceptions and exits with code 1."""
-    mock_all_runners["visualize"].side_effect = RuntimeError("Viz error")
-    json_file = setup_test_files / "fair_parsed_data.json"
-
-    result = runner.invoke(app, ["visualize", str(json_file), "--no-serve"])
     assert result.exit_code == 1
 
 
@@ -556,7 +557,6 @@ def test_cli_visualize_build_and_serve_modes(setup_test_files, monkeypatch):
 
     mock_serve_docs = MagicMock()
     monkeypatch.setattr(fair_cli.visualize_module, "serve_docs", mock_serve_docs)
-    monkeypatch.setattr(fair_cli.visualize_module, "run_visualization", MagicMock())
 
     # Build mode
     res_build = runner.invoke(app, ["visualize", str(setup_test_files), "--build"])
@@ -619,13 +619,7 @@ def test_cli_all_command_workflow_and_errors(setup_test_files, mock_all_runners,
     assert res_exp_err.exit_code == 1
     mock_all_runners["export"].side_effect = None
 
-    # 6. Visualize step fails
-    mock_all_runners["visualize"].side_effect = RuntimeError("Viz error")
-    res_viz_err = runner.invoke(app, ["all", str(setup_test_files / "vasprun.xml"), "--output", str(out_dir), "--yes"])
-    assert res_viz_err.exit_code == 1
-    mock_all_runners["visualize"].side_effect = None
-
-    # 7. Happy path full workflow
+    # 6. Happy path full workflow
     (out_dir / "fair_parsed_test.json").write_text("{}", encoding="utf-8")
     res_happy = runner.invoke(app, ["all", str(setup_test_files / "vasprun.xml"), "--output", str(out_dir), "--yes"])
     assert res_happy.exit_code == 0
