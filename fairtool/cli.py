@@ -207,6 +207,14 @@ def _find_json_files(path: Path, recursive: bool = True) -> list[Path]:
     return files_to_process
 
 
+def _warn_ignored_option(option: str):
+    """Warns that a deprecated option, still accepted so existing scripts keep working, has no effect."""
+    log.warning(
+        f"{option} is deprecated and has no effect: visualization data files and embed snippets "
+        "are no longer generated."
+    )
+
+
 def version_callback(value: bool):
     """Prints the version and exits."""
     if value:
@@ -491,20 +499,21 @@ def visualize(
         ),
     ],
     output_dir: Annotated[
-        Path,
+        Optional[Path],
         typer.Option(
             "--output",
             "-o",
-            help="Directory to save visualization data (e.g., JSON for React components) and potentially Markdown snippets.",
-            resolve_path=True,
+            help="Deprecated; has no effect.",
+            hidden=True,
         ),
-    ] = Path("."),
+    ] = None,
     embed: Annotated[
         bool,
         typer.Option(
             "--embed",
             "-e",
-            help="Generate Markdown snippets for embedding visualizations in mkdocs.",
+            help="Deprecated; has no effect.",
+            hidden=True,
         ),
     ] = False,
     serve: Annotated[
@@ -531,23 +540,12 @@ def visualize(
     ] = 8000,
 ):
     """
-    Generate a complete visualization of the processed data (metadata, structures, BZ, DOS, bands)
+    Serve or build a local website of the processed data (metadata, structures, DOS).
     """
-
-    log.info(f"Starting visualization data generation for: {input_path}")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    log.info(f"Visualization data will be saved to: {output_dir}")
+    if output_dir is not None:
+        _warn_ignored_option("--output")
     if embed:
-        log.info("Will generate Markdown embedding snippets.")
-
-    try:
-        log.info("Visualization data generation started.")
-        visualize_module.run_visualization(input_path, output_dir, embed)
-    except Exception as e:
-        log.error(f"Visualization data generation failed for {input_path}: {e}", exc_info=True)
-        raise typer.Exit(code=1)
-
-    log.info("Visualization data generation finished.")
+        _warn_ignored_option("--embed")
 
     # If requested, build-only mode: run mkdocs build and exit without serving.
     # NOTE: `--build` now implies build-only by default (it will not start the
@@ -573,6 +571,8 @@ def visualize(
         except Exception as e:
             log.error(f"Failed to start localhost server: {e}", exc_info=False)
             raise typer.Exit(code=1)
+    else:
+        log.warning("Nothing to do: pass --build to build the site or --serve to preview it.")
 
 
 @app.command(rich_help_panel="Automated Workflow")
@@ -643,20 +643,23 @@ def all(
         typer.Option(
             "--embed",
             "-e",
-            help="Generate Markdown embedding snippets during visualization.",
+            help="Deprecated; has no effect.",
+            hidden=True,
         ),
     ] = False,
 ):
     """
-    Run the full FAIR workflow: parse -> analyze -> summarize -> export -> visualize.
+    Run the full FAIR workflow: parse -> analyze -> summarize -> export.
     """
     log.info("--- Starting Full FAIR Workflow (all steps) ---")
     log.info(f"Input path: {input_path}")
     log.info(f"Output directory: {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
+    if embed:
+        _warn_ignored_option("--embed")
 
     # --- Step 1: Parse ---
-    log.info("--- STEP 1/5: Parse ---")
+    log.info("--- STEP 1/4: Parse ---")
 
     # This logic is duplicated from the 'parse' command to ensure
     # the 'all' command correctly finds and processes files.
@@ -687,7 +690,7 @@ def all(
 
     # --- Step 2: Analyze ---
     try:
-        log.info("--- STEP 2/5: Analyze ---")
+        log.info("--- STEP 2/4: Analyze ---")
         analyze_module.run_analysis(output_dir, output_dir, config)
     except Exception as e:
         log.error(f"Analysis step failed: {e}", exc_info=True)
@@ -695,7 +698,7 @@ def all(
 
     # --- Step 3: Summarize ---
     try:
-        log.info("--- STEP 3/5: Summarize ---")
+        log.info("--- STEP 3/4: Summarize ---")
         # We must call the 'summarize' *command's logic* here, not the module directly,
         # to ensure it loops over files correctly.
         # We find JSON files in the output_dir
@@ -721,18 +724,10 @@ def all(
 
     # --- Step 4: Export ---
     try:
-        log.info("--- STEP 4/5: Export ---")
+        log.info("--- STEP 4/4: Export ---")
         export_module.run_export(output_dir, output_dir, export_format)
     except Exception as e:
         log.error(f"Export step failed: {e}", exc_info=True)
-        raise typer.Exit(code=1)
-
-    # --- Step 5: Visualize ---
-    try:
-        log.info("--- STEP 5/5: Visualize ---")
-        visualize_module.run_visualization(output_dir, output_dir, embed)
-    except Exception as e:
-        log.error(f"Visualization step failed: {e}", exc_info=True)
         raise typer.Exit(code=1)
 
     log.info("--- Full FAIR Workflow Completed Successfully ---")
