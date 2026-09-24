@@ -68,7 +68,7 @@
     | **Method name** | DFT |
     | **Workflow name** | SinglePoint |
     | **Program name** | VASP |
-    | **Program version** | 5.4.4.18Apr17-6-g9f103f2a35 gamma-only parallel LinuxIFC |
+    | **Program version** | 5.4.4 18Apr17-6-g9f103f2a35 gamma-only parallel LinuxIFC |
     | **Basis set type** | plane waves |
     | **Core electron treatment** | pseudopotential |
     | **Jacob's ladder** | hybrid |
