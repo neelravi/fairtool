@@ -82,7 +82,7 @@ jobs:
           "$RUNNER_TEMP/wheel-venv/bin/python" -m pip install dist/*.whl
 
       # Run outside the checkout so nothing can be picked up from the source tree.
-      # `fair visualize --build` exits 0 even when mkdocs fails, so check the output.
+      # A failed build exits non-zero; also check that the site was written to ./site.
       - name: Build site outside the source checkout
         working-directory: ${{ runner.temp }}
         run: |

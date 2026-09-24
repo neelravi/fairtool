@@ -532,6 +532,23 @@ def test_cli_visualize_build_and_serve_modes(setup_test_files, monkeypatch):
     assert res_serve_err.exit_code == 1
 
 
+def test_cli_visualize_build_failure_exits_nonzero(tmp_path, monkeypatch, caplog):
+    """A failed mkdocs build makes `visualize --build` exit non-zero instead of reporting success."""
+    docs_dir = tmp_path / "calcs"
+    docs_dir.mkdir()
+    (docs_dir / "index.md").write_text("# Calculations", encoding="utf-8")
+    # --build writes the site to ./site
+    monkeypatch.chdir(tmp_path)
+    caplog.set_level("INFO", logger="fairtool")
+
+    # serve_docs runs for real; only the mkdocs subprocess is mocked, and it fails
+    with patch("subprocess.run", return_value=MagicMock(returncode=3)):
+        result = runner.invoke(app, ["visualize", str(docs_dir), "--build"])
+
+    assert result.exit_code == 3
+    assert "Build finished" not in caplog.text
+
+
 def test_cli_all_command_workflow_and_errors(setup_test_files, mock_all_runners, tmp_path):
     """Test all command happy path and all error conditions."""
     out_dir = tmp_path / "all_out"
