@@ -274,7 +274,7 @@
     data.addRows(rows);
 
     var options = {
-      title: 'Density of States (DOS)',
+      title: '',
       legend: { position: 'bottom' },
       hAxis: {
         title: 'Energy (eV) [Fermi Energy at 0 eV]'
