@@ -32,6 +32,11 @@ jobs:
             pyproject.toml
             requirements.txt
 
+      # `nomad parse` imports python-magic, which needs the libmagic library. Ubuntu runners have it.
+      - name: Install libmagic (macOS)
+        if: runner.os == 'macOS'
+        run: brew install libmagic
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
