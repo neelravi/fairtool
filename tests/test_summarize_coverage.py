@@ -4,6 +4,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
+from fairtool.parse import ELEMENTARY_CHARGE_VALUE as EV
 from fairtool.summarize import (
     _add_row,
     _as_qty,
@@ -108,6 +109,11 @@ def test_load_data_edge_cases(tmp_path):
     assert load_data(corrupt_json) is None
 
 
+def _eigenvalues(energies_eV, occupations):
+    """An `eigenvalues` block, shaped (spin channel, k-point, band), with the energies in joules."""
+    return {"energies": (np.asarray(energies_eV) * EV).tolist(), "occupations": occupations}
+
+
 def test_extract_context_topology_and_energies():
     """Test extract_context with non-dict topology and energy calculations."""
     data = {
@@ -129,7 +135,8 @@ def test_extract_context_topology_and_energies():
                             "total": {"value": -1.602176634e-19},
                             "custom_free": {"value": None},
                         },
-                        "band_gap": [{"value": 2.5 * 1.602176634e-19}],
+                        # Highest occupied state at 1.0 eV, lowest unoccupied at 3.5 eV
+                        "eigenvalues": [_eigenvalues([[[1.0, 3.5], [0.5, 4.0]]], [[[1.0, 0.0], [1.0, 0.0]]])],
                     }
                 ]
             }
@@ -140,6 +147,80 @@ def test_extract_context_topology_and_energies():
     assert abs(ctx["final_energies_ev"]["band_gap"] - 2.5) < 1e-6
     assert ctx["original_cell"]["a"] == 5e-10
     assert ctx["t_cell_data_sym"]["crystal_system"] == "Cubic"
+
+
+def test_extract_context_uses_final_calculation():
+    """
+    For a relaxation, report the last ionic step, not the first. As in example06, only the
+    last step holds the eigenvalues and the DOS.
+    """
+    first_step = {
+        "energy": {"total": {"value": -9.0 * EV}},
+        "scf_iteration": [{"energy": {"total": {"value": -8.0 * EV}}}] * 3,
+    }
+    final_step = {
+        "energy": {"total": {"value": -10.0 * EV}},
+        "scf_iteration": [{"energy": {"total": {"value": -10.0 * EV}}}] * 2,
+        "eigenvalues": [_eigenvalues([[[1.0, 2.0], [1.5, 2.5]]], [[[1.0, 0.0], [1.0, 0.0]]])],
+        "dos_electronic": [{"energies": [1e-19, 2e-19], "energy_fermi": 1e-19, "total": [{"value": [4.0, 5.0]}]}],
+    }
+    ctx = extract_context({"run": [{"calculation": [first_step, final_step]}]})
+
+    assert ctx["final_energies_ev"]["total"] == pytest.approx(-10.0)
+    assert ctx["final_energies_ev"]["band_gap"] == pytest.approx(0.5)
+    assert [row["total_ev"] for row in ctx["scf_table_data"]] == pytest.approx([-10.0, -10.0])
+    assert len(ctx["dos_chart_data"]) == 2
+
+
+@pytest.mark.parametrize(
+    ("calculation", "band_gap"),
+    [
+        # A metal: the second band is filled at the first k-point and empty at the second
+        ({"eigenvalues": [_eigenvalues([[[3.0, 4.0], [3.5, 4.1]]], [[[1.0, 1.0], [1.0, 0.0]]])]}, 0.0),
+        # A band-structure run keeps its eigenvalues in the segments of the band path
+        (
+            {
+                "band_structure_electronic": [
+                    {
+                        "segment": [
+                            _eigenvalues([[[1.0, 3.0]]], [[[1.0, 0.0]]]),
+                            _eigenvalues([[[1.5, 2.5]]], [[[1.0, 0.0]]]),
+                        ]
+                    }
+                ]
+            },
+            1.0,
+        ),
+    ],
+    ids=["metal", "band_path"],
+)
+def test_extract_context_derives_band_gap(calculation, band_gap):
+    """The band gap comes from the eigenvalues, and a metal's gap of 0 still gets a row."""
+    ctx = extract_context({"run": [{"calculation": [calculation]}]})
+
+    assert ctx["final_energies_ev"]["band_gap"] == pytest.approx(band_gap)
+    assert f"| **Band Gap** | {band_gap:.6f} |" in _generate_final_energies_table(ctx)
+
+
+@pytest.mark.parametrize(
+    "calculation",
+    [
+        # Archives from older NOMAD versions store `band_gap[*].value`, which can be wrong:
+        # 7.23 eV for metallic Cs2AgHgCl6 in example01. It is not used.
+        {"band_gap": [{"value": 7.2254 * EV}]},
+        # Without unoccupied states there is no gap to measure
+        {"eigenvalues": [_eigenvalues([[[1.0, 2.0], [1.5, 2.5]]], [[[1.0, 1.0], [1.0, 1.0]]])]},
+        # Energies and occupations of different shapes
+        {"eigenvalues": [_eigenvalues([[[1.0, 2.0], [1.5, 2.5]]], [[[1.0], [1.0]]])]},
+    ],
+    ids=["stored_value_only", "all_occupied", "shape_mismatch"],
+)
+def test_extract_context_without_band_gap(calculation):
+    """No Band Gap row when the eigenvalues cannot give one."""
+    ctx = extract_context({"run": [{"calculation": [{"energy": {"total": {"value": -EV}}, **calculation}]}]})
+
+    assert "band_gap" not in ctx["final_energies_ev"]
+    assert "Band Gap" not in _generate_final_energies_table(ctx)
 
 
 def test_extract_context_dos_spin_polarized():

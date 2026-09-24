@@ -21,6 +21,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pint
 
+from .archive import band_gap_ev
+
 # --- Setup ---
 u = pint.UnitRegistry()
 log = logging.getLogger("fairtool")
@@ -192,9 +194,10 @@ def extract_context(data: Dict[str, Any]) -> Dict[str, Any]:
     context["cell_type_data"] = t_cell_data.get("cell", {})
     context["t_cell_data_sym"] = t_cell_data.get("symmetry", {})
 
-    # Safely get calculation data
+    # Safely get calculation data. The last calculation is the final one,
+    # e.g. the last ionic step of a relaxation.
     calculation = run.get("calculation", [])
-    calc = calculation[0] if calculation else {}
+    calc = calculation[-1] if calculation else {}
     scf_iterations = calc.get("scf_iteration", [])
 
     # Safely get k_mesh data
@@ -206,7 +209,7 @@ def extract_context(data: Dict[str, Any]) -> Dict[str, Any]:
     context["simulation"] = simulation
     context["k_mesh"] = k_mesh
 
-    # --- **NEW:** Extract Final Energies (from run.calculation[0].energy) ---
+    # --- **NEW:** Extract Final Energies (from run.calculation[-1].energy) ---
     final_energy_data = calc.get("energy", {})
     final_energies_ev = {}
     for key, value_dict in final_energy_data.items():
@@ -220,15 +223,12 @@ def extract_context(data: Dict[str, Any]) -> Dict[str, Any]:
     context["final_energies_ev"] = final_energies_ev
 
     # --- **NEW:** Extract Band Gap Info ---
-    band_gap_list = calc.get("band_gap", [])
-    band_gap_data = band_gap_list[0] if band_gap_list else {}
-    band_gap_j = band_gap_data.get("value")
-    if band_gap_j is not None:
-        try:
-            # Add band gap in eV to the final_energies_ev dict for convenience
-            context["final_energies_ev"]["band_gap"] = band_gap_j / J_PER_EV
-        except (ZeroDivisionError, TypeError):
-            context["final_energies_ev"]["band_gap"] = float("nan")
+    # NOMAD 1.4 stores no band gap value, so derive it from the eigenvalues, as analyze does.
+    # Older archives carry `band_gap[*].value`, which is ignored: it can be wrong (e.g. non-zero for a metal).
+    band_gap = band_gap_ev(calc)
+    if band_gap is not None:
+        # Add band gap in eV to the final_energies_ev dict for convenience
+        context["final_energies_ev"]["band_gap"] = band_gap
 
     # --- **NEW:** Extract SCF Iteration Energies ---
     log.info("Extracting SCF energy data.")
