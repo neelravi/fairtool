@@ -1,5 +1,6 @@
+import shutil
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 import typer
@@ -196,6 +197,45 @@ def test_cli_analyze_command(mock_all_runners, setup_test_files):
         out_dir,
         config_file,
     )
+
+
+def test_cli_analyze_output_defaults_to_input_location(mock_all_runners, setup_test_files):
+    """Without --output, analyze saves into the input directory, or next to a single input file."""
+    json_file = setup_test_files / "fair_parsed_data.json"
+
+    assert runner.invoke(app, ["analyze", str(setup_test_files)]).exit_code == 0
+    assert runner.invoke(app, ["analyze", str(json_file)]).exit_code == 0
+
+    assert mock_all_runners["analyze"].call_args_list == [
+        call(setup_test_files, setup_test_files, None),
+        call(json_file, setup_test_files, None),
+    ]
+
+
+def test_cli_analyze_then_export_without_analyze_output(tmp_path, monkeypatch):
+    """
+    Regression: `fair analyze calc` followed by `fair export calc` exports the analysis.
+    Without --output, analyze must save analysis_summary.csv in calc/, where export looks for it,
+    rather than in the current directory.
+    """
+    calc_dir = tmp_path / "calc"
+    calc_dir.mkdir()
+    # What `fair parse calc` leaves next to calc/dos_si_vasprun.xml
+    parsed_json = Path(__file__).parent / "VASP" / "Basic" / "example03" / "fair_parsed_dos_si_vasprun.json"
+    shutil.copy(parsed_json, calc_dir)
+    export_dir = tmp_path / "exported"
+    # Run from calc's parent, like a user typing `fair analyze calc && fair export calc`
+    monkeypatch.chdir(tmp_path)
+
+    res_analyze = runner.invoke(app, ["analyze", "calc"])
+    assert res_analyze.exit_code == 0
+    assert (calc_dir / "analysis_summary.csv").is_file()
+
+    res_export = runner.invoke(app, ["export", "calc", "--output", str(export_dir)])
+    assert res_export.exit_code == 0
+    exported_csv = export_dir / "exported_data.csv"
+    assert exported_csv.is_file()
+    assert "fair_parsed_dos_si_vasprun" in exported_csv.read_text(encoding="utf-8")
 
 
 def test_cli_all_command(mock_all_runners, setup_test_files):
