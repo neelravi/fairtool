@@ -83,7 +83,7 @@ def test_run_summarization_happy_path(full_reference_json_file, tmp_path):
     output_dir = tmp_path
 
     # Run the summarization
-    run_summarization(input_file, output_dir, template_path=None)
+    assert run_summarization(input_file, output_dir, template_path=None) is True
 
     # Check that the output file was created
     expected_output = output_dir / "fair_summarized_full.md"
@@ -155,36 +155,34 @@ def test_run_summarization_relaxation_reports_final_ionic_step(tmp_path):
 
 def test_run_summarization_robustness_empty_json(empty_json_file, tmp_path):
     """
-    Tests that run_summarization does not crash when given an empty
-    JSON file, proving the safe defaults (.get(), empty dicts) work.
+    An empty JSON object holds no data to summarize. run_summarization does not crash on it,
+    but returns False and writes no summary.
     """
     input_file = empty_json_file
     output_dir = tmp_path
 
     # Run the summarization
     try:
-        run_summarization(input_file, output_dir, template_path=None)
+        summarized = run_summarization(input_file, output_dir, template_path=None)
     except Exception as e:
         pytest.fail(f"run_summarization crashed on empty JSON: {e}")
+    assert summarized is False
 
-    # Check that the output file was created
+    # Check that no output file was created
     expected_output = output_dir / "fair_summarized_empty.md"
-
-    # [FIX] Changed to 'assert not' to match 'summarize.py' logic,
-    # which returns early for empty data and creates no file.
     assert not expected_output.exists()
 
 
 def test_run_summarization_nonexistent_file(tmp_path):
-    """Test run_summarization handles non-existent files gracefully."""
-    nonexistent = tmp_path / "nonexistent.json"
-    run_summarization(nonexistent, tmp_path, template_path=None)
+    """Test run_summarization returns False, without raising, for a non-existent file."""
+    nonexistent = tmp_path / "fair_parsed_nonexistent.json"
+    assert run_summarization(nonexistent, tmp_path, template_path=None) is False
     assert not (tmp_path / "fair_summarized_nonexistent.md").exists()
 
 
 def test_run_summarization_corrupted_file(tmp_path):
-    """Test run_summarization handles invalid JSON gracefully."""
-    bad_file = tmp_path / "bad.json"
+    """Test run_summarization returns False, without raising, for invalid JSON."""
+    bad_file = tmp_path / "fair_parsed_bad.json"
     bad_file.write_text("{ corrupt", encoding="utf-8")
-    run_summarization(bad_file, tmp_path, template_path=None)
+    assert run_summarization(bad_file, tmp_path, template_path=None) is False
     assert not (tmp_path / "fair_summarized_bad.md").exists()
