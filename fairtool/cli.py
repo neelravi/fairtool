@@ -318,6 +318,9 @@ def parse(
     log.info(f"[green]Success: {count_success}[/green]")
     log.info(f"[yellow]Skipped: {count_skip}[/yellow]")
     log.info(f"[red]Failed:  {count_fail}[/red]")
+    # A failed file has no parsed output, so let scripts and CI see that the run failed
+    if count_fail:
+        raise typer.Exit(code=1)
 
 
 @app.command(rich_help_panel="Processing")
@@ -457,6 +460,9 @@ def summarize(
     log.info(f"[green]Success: {count_success}[/green]")
     log.info(f"[yellow]Skipped: {count_skip}[/yellow]")
     log.info(f"[red]Failed:  {count_fail}[/red]")
+    # A failed file has no summary, so let scripts and CI see that the run failed
+    if count_fail:
+        raise typer.Exit(code=1)
 
 
 @app.command(rich_help_panel="Processing")
