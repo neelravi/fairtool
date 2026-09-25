@@ -10,19 +10,23 @@ Thank you for your interest in contributing to **FAIRTool**! We welcome contribu
    cd fairtool
    ```
 
-2. **Set up a virtual environment:**
+2. **Install libmagic**, a system library that NOMAD (which `fair parse` and the test suite run) uses to detect file types:
+   - macOS: `brew install libmagic` ([Homebrew](https://brew.sh)), or `sudo port install file` ([MacPorts](https://www.macports.org))
+   - Debian/Ubuntu: the `libmagic1` package, usually already installed (if not, `sudo apt install libmagic1`)
+
+3. **Set up a virtual environment:**
    ```bash
    python -m venv .venv
    source .venv/bin/activate
    ```
 
-3. **Install the package in editable mode with development and test dependencies:**
+4. **Install the package in editable mode with development and test dependencies:**
    ```bash
    pip install --upgrade pip
-   pip install -e .[dev]
+   pip install -e '.[dev]'
    ```
 
-4. **Set up pre-commit hooks:**
+5. **Set up pre-commit hooks:**
    ```bash
    pre-commit install
    ```
