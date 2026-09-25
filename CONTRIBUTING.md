@@ -10,7 +10,7 @@ Thank you for your interest in contributing to **FAIRTool**! We welcome contribu
    cd fairtool
    ```
 
-2. **Install libmagic**, a system library that `fair parse` and the test suite use to detect file types:
+2. **Install libmagic**, a system library that `fair parse` uses to detect file types:
    - macOS: `brew install libmagic` ([Homebrew](https://brew.sh)), or `sudo port install file` ([MacPorts](https://www.macports.org))
    - Debian/Ubuntu: the `libmagic1` package, usually already installed (if not, `sudo apt install libmagic1`)
 
