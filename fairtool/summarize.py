@@ -795,8 +795,13 @@ def generate_markdown(context: Dict[str, Any]) -> str:
     return markdown_content
 
 
-def save_report(content: str, input_path: Path, output_dir: Path):
-    """Saves the generated Markdown content to a file."""
+def save_report(content: str, input_path: Path, output_dir: Path) -> bool:
+    """
+    Saves the generated Markdown content to a file.
+
+    Returns:
+        True if the file was written. False if it could not be; the error is logged.
+    """
     # The output name is based on the *input* JSON file name
     base_name = input_path.stem  # e.g., "fair_parsed_my_calc"
     summary_base_name = base_name.replace("fair_parsed_", "fair_summarized_")
@@ -809,12 +814,14 @@ def save_report(content: str, input_path: Path, output_dir: Path):
         log.info(f"Successfully generated markdown summary at: {output_path}")
     except Exception as e:
         log.error(f"Failed to write summary file: {e}")
+        return False
+    return True
 
 
 # --- Main Orchestration Function ---
 
 
-def run_summarization(input_path: Path, output_dir: Path, template_path: Optional[str] = None):
+def run_summarization(input_path: Path, output_dir: Path, template_path: Optional[str] = None) -> bool:
     """
     Generates summary reports (e.g., Markdown) from parsed or analyzed data.
 
@@ -822,13 +829,19 @@ def run_summarization(input_path: Path, output_dir: Path, template_path: Optiona
         input_path: Path to input JSON file (e.g., fair_parsed_vasprun.json).
         output_dir: Directory to save the summary report.
         template_path: Optional path to a custom template (not used here).
+
+    Returns:
+        True if the summary report was written. False if no report could be produced, because the
+        data could not be loaded (the file cannot be read or parsed as JSON, or is not a JSON object
+        with data), or extracting it, generating the Markdown or writing the report failed. The
+        reason is logged.
     """
 
     # 1. Load Data
     data = load_data(input_path)
     if not data:
         log.error("Aborting summarization due to data load failure.")
-        return
+        return False
 
     # 2. Extract Data
     try:
@@ -836,7 +849,7 @@ def run_summarization(input_path: Path, output_dir: Path, template_path: Optiona
         log.info("Successfully extracted data context.")
     except Exception as e:
         log.error(f"Failed during data extraction: {e}", exc_info=True)
-        return
+        return False
 
     # 3. Generate Markdown
     try:
@@ -844,12 +857,14 @@ def run_summarization(input_path: Path, output_dir: Path, template_path: Optiona
         log.info("Successfully generated Markdown content.")
     except Exception as e:
         log.error(f"Failed during Markdown generation: {e}", exc_info=True)
-        return
+        return False
 
     # 4. Save Report
-    save_report(markdown_content, input_path, output_dir)
+    if not save_report(markdown_content, input_path, output_dir):
+        return False
 
     log.info("Summarization process completed.")
+    return True
 
 
 # --- Example Usage (if run as a script) ---
