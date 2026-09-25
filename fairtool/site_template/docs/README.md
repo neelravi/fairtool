@@ -38,7 +38,7 @@ This guide explains how to install the `fairtool` package and its dependencies u
 
 ## Prerequisites
 - **Python 3.11 – 3.14** (Python 3.10 and earlier are no longer supported)
-- **libmagic**, a system library that NOMAD (which `fair parse` runs) uses to detect file types:
+- **libmagic**, a system library that `fair parse` uses to detect file types:
     - macOS: `brew install libmagic` ([Homebrew](https://brew.sh)), or `sudo port install file` ([MacPorts](https://www.macports.org))
     - Debian/Ubuntu: the `libmagic1` package, usually already installed (if not, `sudo apt install libmagic1`)
 - [uv](https://github.com/astral-sh/uv) installed (see below)
