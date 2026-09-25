@@ -556,35 +556,46 @@ def test_generate_markdown_full():
 
 
 def test_save_report_write_error(tmp_path, monkeypatch):
-    """Test save_report logs error on write failure."""
+    """Test save_report logs the error and returns False, without raising, on write failure."""
 
     def mock_open(*args, **kwargs):
         raise OSError("Disk write error")
 
     monkeypatch.setattr("builtins.open", mock_open)
-    # Should not raise
-    save_report("content", tmp_path / "fair_parsed_test.json", tmp_path / "out")
+    assert save_report("content", tmp_path / "fair_parsed_test.json", tmp_path / "out") is False
 
 
 def test_run_summarization_error_paths(tmp_path):
-    """Test run_summarization data load failure, extract context error, and markdown generation error."""
+    """
+    run_summarization returns False, without raising, when it cannot load the data, extract the context,
+    generate the Markdown or write the report, so that the CLI counts the file as failed.
+    """
     out_dir = tmp_path / "out"
     out_dir.mkdir()
 
     # Load failure
-    bad_file = tmp_path / "bad.json"
+    bad_file = tmp_path / "fair_parsed_bad.json"
     bad_file.write_text("invalid", encoding="utf-8")
-    run_summarization(bad_file, out_dir)
+    assert run_summarization(bad_file, out_dir) is False
     assert not (out_dir / "fair_summarized_bad.md").exists()
 
     # Context extraction failure
     good_file = tmp_path / "fair_parsed_good.json"
     good_file.write_text(json.dumps({"test": "ok"}), encoding="utf-8")
+    summary = out_dir / "fair_summarized_good.md"
     with patch("fairtool.summarize.extract_context", side_effect=RuntimeError("Extraction failed")):
-        run_summarization(good_file, out_dir)
-        assert not (out_dir / "fair_summarized_good.md").exists()
+        assert run_summarization(good_file, out_dir) is False
+        assert not summary.exists()
 
     # Markdown generation failure
     with patch("fairtool.summarize.generate_markdown", side_effect=RuntimeError("MD failed")):
-        run_summarization(good_file, out_dir)
-        assert not (out_dir / "fair_summarized_good.md").exists()
+        assert run_summarization(good_file, out_dir) is False
+        assert not summary.exists()
+
+    # Write failure: a directory is in the summary's place
+    summary.mkdir()
+    assert run_summarization(good_file, out_dir) is False
+    summary.rmdir()
+
+    assert run_summarization(good_file, out_dir) is True
+    assert summary.is_file()

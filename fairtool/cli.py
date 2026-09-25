@@ -449,8 +449,12 @@ def summarize(
                 continue
 
             log.info(f"Summarizing {json_file.name} -> {md_output_path.name}")
-            summarize_module.run_summarization(json_file, target_dir, template)
-            count_success += 1
+            if summarize_module.run_summarization(json_file, target_dir, template):
+                count_success += 1
+            else:
+                # run_summarization has already logged why it could not write the summary
+                log.error(f"Summarization failed for {json_file.name}: no summary was written.")
+                count_fail += 1
 
         except Exception as e:
             log.error(f"Summarization failed for {json_file.name}: {e}", exc_info=True)
@@ -758,7 +762,9 @@ def all(
                         log.info(f"Skipping summary for {json_file.name}; output exists.")
                         continue
 
-                    summarize_module.run_summarization(json_file, json_file.parent, template)
+                    # A failed summary is logged, like one that raises, and the workflow goes on
+                    if not summarize_module.run_summarization(json_file, json_file.parent, template):
+                        log.error(f"Summarization failed for {json_file.name}: no summary was written.")
                 except Exception as e:
                     log.error(f"Summarization failed for {json_file.name}: {e}", exc_info=False)
     except Exception as e:

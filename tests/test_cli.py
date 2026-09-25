@@ -31,6 +31,8 @@ def mock_all_runners():
     ):
         # Make run_parser return False (not skipped)
         mock_parse.return_value = False
+        # Make run_summarization return True (the summary was written)
+        mock_summarize.return_value = True
         # Make run_export return True (something was exported)
         mock_export.return_value = True
 
@@ -634,6 +636,21 @@ def test_cli_summarize_no_json_files(tmp_path, caplog):
     assert "No 'fair_parsed_*.json' files found" in caplog.text
 
 
+def _summarization_counts(success, skipped, failed):
+    """The lines that `fair summarize` ends its log with."""
+    return [
+        "--- Summarization Finished ---",
+        f"[green]Success: {success}[/green]",
+        f"[yellow]Skipped: {skipped}[/yellow]",
+        f"[red]Failed:  {failed}[/red]",
+    ]
+
+
+def _write_parsed_json(path, entry_name):
+    """Writes a minimal parsed archive, which is enough to summarize."""
+    path.write_text(json.dumps({"metadata": {"entry_name": entry_name}}), encoding="utf-8")
+
+
 @pytest.mark.parametrize(
     ("existing_summaries", "failing", "exit_code", "counts"),
     [
@@ -660,19 +677,89 @@ def test_cli_summarize_exits_nonzero_when_a_file_fails(
     def fake_summarization(json_file, output_dir, template):
         if json_file in failing_files:
             raise RuntimeError("Summarize failed")
+        return True
 
     mock_all_runners["summarize"].side_effect = fake_summarization
 
     result = runner.invoke(app, ["summarize", str(setup_test_files)])
 
     assert result.exit_code == exit_code
-    success, skipped, failed = counts
-    assert [record.getMessage() for record in caplog.records[-4:]] == [
-        "--- Summarization Finished ---",
-        f"[green]Success: {success}[/green]",
-        f"[yellow]Skipped: {skipped}[/yellow]",
-        f"[red]Failed:  {failed}[/red]",
-    ]
+    assert [record.getMessage() for record in caplog.records[-4:]] == _summarization_counts(*counts)
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        pytest.param(b"{not json", id="malformed"),
+        pytest.param(b'{"metadata": {"entry_name": "\xff"}}', id="not-utf8"),
+        pytest.param(b"[1, 2, 3]", id="not-an-object"),
+        pytest.param(b"{}", id="empty-object"),
+    ],
+)
+def test_cli_summarize_fails_on_a_file_it_cannot_load(tmp_path, caplog, content):
+    """
+    Regression: run_summarization logged that it could not load the file and returned normally,
+    so `fair summarize` counted the file as a success, wrote no summary and exited 0.
+    """
+    caplog.set_level("INFO", logger="fairtool")
+    (tmp_path / "fair_parsed_broken.json").write_bytes(content)
+
+    result = runner.invoke(app, ["summarize", str(tmp_path)])
+
+    assert result.exit_code == 1
+    assert [record.getMessage() for record in caplog.records[-4:]] == _summarization_counts(0, 0, 1)
+    assert "Summarization failed for fair_parsed_broken.json: no summary was written." in caplog.text
+    assert not (tmp_path / "fair_summarized_broken.md").exists()
+
+
+def test_cli_summarize_fails_when_the_summary_cannot_be_written(tmp_path, caplog):
+    """
+    Regression: save_report only logged a failed write, so `fair summarize` counted the file as a success.
+    A directory in the summary's place stands in for any failed write, such as a full disk.
+    """
+    caplog.set_level("INFO", logger="fairtool")
+    _write_parsed_json(tmp_path / "fair_parsed_calc.json", "Si calculation")
+    (tmp_path / "fair_summarized_calc.md").mkdir()
+
+    # Without --force, the existing path would be skipped
+    result = runner.invoke(app, ["summarize", str(tmp_path), "--force"])
+
+    assert result.exit_code == 1
+    assert [record.getMessage() for record in caplog.records[-4:]] == _summarization_counts(0, 0, 1)
+    assert "Summarization failed for fair_parsed_calc.json: no summary was written." in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("bad_files", "exit_code", "counts"),
+    [
+        ({}, 0, (2, 1, 0)),
+        ({"broken": "{not json", "list": "[1, 2, 3]", "empty": "{}"}, 1, (2, 1, 3)),
+    ],
+    ids=["good-and-skipped", "good-skipped-and-bad"],
+)
+def test_cli_summarize_counts_each_file(tmp_path, caplog, bad_files, exit_code, counts):
+    """
+    Each parsed JSON file counts once: as a success if its summary is written, as skipped if its
+    summary already exists, and as failed if no summary could be made from it.
+    """
+    caplog.set_level("INFO", logger="fairtool")
+    for name in ["si", "cu", "al"]:
+        _write_parsed_json(tmp_path / f"fair_parsed_{name}.json", f"{name} calculation")
+    # An earlier run summarized al
+    (tmp_path / "fair_summarized_al.md").write_text("existing", encoding="utf-8")
+    for name, content in bad_files.items():
+        (tmp_path / f"fair_parsed_{name}.json").write_text(content, encoding="utf-8")
+
+    result = runner.invoke(app, ["summarize", str(tmp_path)])
+
+    assert result.exit_code == exit_code
+    assert [record.getMessage() for record in caplog.records[-4:]] == _summarization_counts(*counts)
+    for name in ["si", "cu"]:
+        assert f"{name} calculation" in (tmp_path / f"fair_summarized_{name}.md").read_text(encoding="utf-8")
+    assert (tmp_path / "fair_summarized_al.md").read_text(encoding="utf-8") == "existing"
+    for name in bad_files:
+        assert f"Summarization failed for fair_parsed_{name}.json: no summary was written." in caplog.text
+        assert not (tmp_path / f"fair_summarized_{name}.md").exists()
 
 
 def test_cli_visualize_build_and_serve_modes(setup_test_files, monkeypatch):
@@ -781,3 +868,26 @@ def test_cli_all_aborts_when_nothing_exported(setup_test_files, mock_all_runners
     mock_all_runners["export"].assert_called_once_with(out_dir, out_dir, "xml")
     # No later step runs, and the workflow doesn't report success
     assert caplog.records[-1].getMessage() == "Nothing was exported. Aborting workflow."
+
+
+def test_cli_all_continues_past_a_failed_summary(tmp_path, nomad_failures, caplog):
+    """
+    `fair all` logs a summary that it could not make, as it logs one that raises, and goes on with
+    the next file and the export. Unlike `fair summarize`, it does not fail because of it.
+    """
+    caplog.set_level("INFO", logger="fairtool")
+    calc_file = tmp_path / "vasprun.xml"
+    calc_file.write_text("dummy vasp", encoding="utf-8")
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+    # An unreadable parsed file, e.g. left by an interrupted run. It is summarized before vasprun's.
+    (out_dir / "fair_parsed_broken.json").write_text("{not json", encoding="utf-8")
+
+    result = runner.invoke(app, ["all", str(calc_file), "-y", "-o", str(out_dir)])
+
+    assert result.exit_code == 0
+    assert "Summarization failed for fair_parsed_broken.json: no summary was written." in caplog.text
+    assert not (out_dir / "fair_summarized_broken.md").exists()
+    assert (out_dir / "fair_summarized_vasprun.md").is_file()
+    assert (out_dir / "exported_data.csv").is_file()
+    assert caplog.records[-1].getMessage() == "--- Full FAIR Workflow Completed Successfully ---"
