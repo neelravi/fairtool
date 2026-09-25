@@ -218,6 +218,44 @@ def test_parser_handles_parse_failure(tmp_path, monkeypatch, caplog):
 
     # 4. Check that the error was logged (optional)
     assert "NOMAD parsing command failed" in caplog.text
+    # An unrelated failure gets no libmagic hint
+    assert "brew install libmagic" not in caplog.text
+
+
+def test_parser_hints_at_libmagic_when_nomad_cannot_load_it(tmp_path, monkeypatch, caplog):
+    """
+    `nomad parse` imports python-magic, which needs the system libmagic library. Without it, the cause
+    is buried in NOMAD's traceback, so run_parser logs how to install libmagic.
+    """
+    input_file = tmp_path / "vasprun.xml"
+    input_file.write_text("dummy")
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    # Shortened stderr of `nomad parse` (nomad-lab 1.4.3) on a macOS runner without libmagic
+    stderr = (
+        "Traceback (most recent call last):\n"
+        '  File ".../magic/loader.py", line 49, in load_lib\n'
+        "    raise ImportError('failed to find libmagic.  Check your installation')\n"
+        "ImportError: failed to find libmagic.  Check your installation\n"
+        "\n"
+        "During handling of the above exception, another exception occurred:\n"
+        "\n"
+        "Traceback (most recent call last):\n"
+        '  File ".../nomad/cli/cli.py", line 81, in run_cli\n'
+        "    if next(arg for arg in sys.argv if arg == '-v') is not None:\n"
+        "StopIteration\n"
+    )
+    monkeypatch.setattr(
+        "subprocess.run",
+        MagicMock(side_effect=subprocess.CalledProcessError(returncode=1, cmd="nomad parse", stderr=stderr)),
+    )
+
+    with pytest.raises(subprocess.CalledProcessError):
+        run_parser(input_file, out_dir, force=True)
+
+    assert "NOMAD parsing command failed" in caplog.text
+    assert "brew install libmagic" in caplog.text
 
 
 # --- [NEW TEST 1] ---

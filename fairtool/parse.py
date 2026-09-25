@@ -257,6 +257,13 @@ def run_parser(input_file: Path, output_dir: Path, force: bool) -> bool:
             f"NOMAD parsing command failed for {input_file.name} with exit code {e.returncode}: {e.stderr}",
             exc_info=False,
         )
+        # python-magic, which NOMAD imports, raises this when it cannot load the system libmagic
+        # library. The cause is easy to miss in NOMAD's traceback, so name it and the fix.
+        if e.stderr and "failed to find libmagic" in e.stderr:
+            log.error(
+                "NOMAD could not load the libmagic library. Install it (macOS: `brew install libmagic`, "
+                "Debian/Ubuntu: `sudo apt install libmagic1`) and parse again."
+            )
         raise
     except json.JSONDecodeError as e:
         log.error(f"Failed to decode JSON output from NOMAD parser for {input_file.name}: {e}")

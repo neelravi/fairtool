@@ -38,6 +38,9 @@ This guide explains how to install the `fairtool` package and its dependencies u
 
 ## Prerequisites
 - **Python 3.11 – 3.14** (Python 3.10 and earlier are no longer supported)
+- **libmagic**, a system library that `fair parse` uses to detect file types:
+    - macOS: `brew install libmagic` ([Homebrew](https://brew.sh)), or `sudo port install file` ([MacPorts](https://www.macports.org))
+    - Debian/Ubuntu: the `libmagic1` package, usually already installed (if not, `sudo apt install libmagic1`)
 - [uv](https://github.com/astral-sh/uv) installed (see below)
 - Git (optional, for cloning the repository)
 
@@ -95,6 +98,7 @@ fair
 
 ## Troubleshooting
 - Ensure you are using Python 3.11 or later (3.11 through 3.14) for best compatibility.
+- If `fair parse` fails with `ImportError: failed to find libmagic`, install libmagic (see [Prerequisites](#prerequisites)).
 - If you see `ModuleNotFoundError: No module named 'fairtool'`, make sure your `PYTHONPATH` includes the project root.
 - If `uv` is not found, ensure `~/.local/bin` is in your `PATH`.
 
