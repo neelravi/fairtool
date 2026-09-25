@@ -8,7 +8,7 @@
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-<img width="800" alt="Fairtool" src="./fairtool/site_template/docs/assets/images/fairtool.png"/>
+<img width="800" alt="Fairtool" src="https://neelravi.github.io/fairtool/assets/images/fairtool.png"/>
 
 FAIR Tool is a command-line interface for processing, analyzing, and visualizing computational materials data.
 It is designed to work with various calculation output files and provides a streamlined workflow.
