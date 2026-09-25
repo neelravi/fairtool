@@ -1,5 +1,6 @@
 import json
 import shutil
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
@@ -62,6 +63,23 @@ def setup_test_files(tmp_path):
     (tmp_path / "fair_parsed_data.json").write_text("{}")
     (tmp_path / "config.yml").write_text("config: true")
     return tmp_path
+
+
+@pytest.fixture
+def nomad_failures(monkeypatch):
+    """
+    Fakes `nomad parse`. For the files added to the returned set it fails, as it does when the
+    system libmagic library is missing; for the others it returns a minimal archive.
+    """
+    failing_files = set()
+
+    def fake_nomad(command, **kwargs):
+        if Path(command[-1]) in failing_files:
+            raise subprocess.CalledProcessError(1, command, stderr="ImportError: failed to find libmagic")
+        return subprocess.CompletedProcess(command, 0, stdout='{"metadata": {}}', stderr="")
+
+    monkeypatch.setattr("subprocess.run", fake_nomad)
+    return failing_files
 
 
 @pytest.fixture
@@ -539,8 +557,44 @@ def test_cli_parse_no_files_and_failure(mock_all_runners, tmp_path, caplog):
     mock_all_runners["parse"].side_effect = RuntimeError("Parser crashed")
 
     res2 = runner.invoke(app, ["parse", str(calc_file), "--yes"])
-    assert res2.exit_code == 0
+    assert res2.exit_code == 1
     assert "Failed:  1" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("unchanged", "failing", "exit_code", "counts"),
+    [
+        # nomad cannot run, e.g. without libmagic
+        ([], ["vasprun.xml", "subdir/vasprun.xml"], 1, (0, 0, 2)),
+        ([], ["subdir/vasprun.xml"], 1, (1, 0, 1)),
+        # A file unchanged since its last parse is skipped, which is not a failure
+        (["vasprun.xml"], [], 0, (1, 1, 0)),
+    ],
+    ids=["all-fail", "partly-fail", "no-fail"],
+)
+def test_cli_parse_exits_nonzero_when_a_file_fails(
+    setup_test_files, nomad_failures, caplog, unchanged, failing, exit_code, counts
+):
+    """
+    Regression: `fair parse` exited 0 even when nomad could not parse any file, so scripts and CI
+    could not tell that the run failed. It still reports the counts, then exits 1 if any file failed.
+    """
+    caplog.set_level("INFO", logger="fairtool")
+    for name in unchanged:
+        assert runner.invoke(app, ["parse", str(setup_test_files / name), "-y"]).exit_code == 0
+    caplog.clear()
+    nomad_failures.update(setup_test_files / name for name in failing)
+
+    result = runner.invoke(app, ["parse", str(setup_test_files), "-r", "-y"])
+
+    assert result.exit_code == exit_code
+    success, skipped, failed = counts
+    assert [record.getMessage() for record in caplog.records[-4:]] == [
+        "--- Parsing Finished ---",
+        f"[green]Success: {success}[/green]",
+        f"[yellow]Skipped: {skipped}[/yellow]",
+        f"[red]Failed:  {failed}[/red]",
+    ]
 
 
 def test_cli_summarize_options_and_skip(mock_all_runners, setup_test_files, caplog):
@@ -564,7 +618,7 @@ def test_cli_summarize_options_and_skip(mock_all_runners, setup_test_files, capl
     # Summarize raises exception
     mock_all_runners["summarize"].side_effect = RuntimeError("Summarize failed")
     res_err = runner.invoke(app, ["summarize", str(json_file), "--force"])
-    assert res_err.exit_code == 0
+    assert res_err.exit_code == 1
     assert "Failed:  1" in caplog.text
 
 
@@ -578,6 +632,47 @@ def test_cli_summarize_no_json_files(tmp_path, caplog):
     res = runner.invoke(app, ["summarize", str(empty_dir)])
     assert res.exit_code == 0
     assert "No 'fair_parsed_*.json' files found" in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("existing_summaries", "failing", "exit_code", "counts"),
+    [
+        ([], ["fair_parsed_data.json", "subdir/fair_parsed_data.json"], 1, (0, 0, 2)),
+        ([], ["subdir/fair_parsed_data.json"], 1, (1, 0, 1)),
+        # A file whose summary already exists is skipped, which is not a failure
+        (["fair_summarized_data.md"], [], 0, (1, 1, 0)),
+    ],
+    ids=["all-fail", "partly-fail", "no-fail"],
+)
+def test_cli_summarize_exits_nonzero_when_a_file_fails(
+    mock_all_runners, setup_test_files, caplog, existing_summaries, failing, exit_code, counts
+):
+    """
+    Regression: `fair summarize` exited 0 even when files failed to summarize.
+    It still reports the counts, then exits 1 if any file failed.
+    """
+    caplog.set_level("INFO", logger="fairtool")
+    (setup_test_files / "subdir" / "fair_parsed_data.json").write_text("{}", encoding="utf-8")
+    for name in existing_summaries:
+        (setup_test_files / name).write_text("existing", encoding="utf-8")
+    failing_files = {setup_test_files / name for name in failing}
+
+    def fake_summarization(json_file, output_dir, template):
+        if json_file in failing_files:
+            raise RuntimeError("Summarize failed")
+
+    mock_all_runners["summarize"].side_effect = fake_summarization
+
+    result = runner.invoke(app, ["summarize", str(setup_test_files)])
+
+    assert result.exit_code == exit_code
+    success, skipped, failed = counts
+    assert [record.getMessage() for record in caplog.records[-4:]] == [
+        "--- Summarization Finished ---",
+        f"[green]Success: {success}[/green]",
+        f"[yellow]Skipped: {skipped}[/yellow]",
+        f"[red]Failed:  {failed}[/red]",
+    ]
 
 
 def test_cli_visualize_build_and_serve_modes(setup_test_files, monkeypatch):
